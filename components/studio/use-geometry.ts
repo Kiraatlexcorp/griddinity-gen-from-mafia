@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { GeometryJob, MeshPart, WorkerRequest, WorkerResponse } from "@/lib/geometry/protocol";
+import type { GeometryJob, MeshPart, Quality, WorkerRequest, WorkerResponse } from "@/lib/geometry/protocol";
 
 type Waiter = {
   resolve: (parts: MeshPart[]) => void;
@@ -38,8 +38,8 @@ async function renderOnMain(request: WorkerRequest): Promise<WorkerResponse> {
   }
 }
 
-export function useGeometry(job: GeometryJob) {
-  const signature = JSON.stringify(job);
+export function useGeometry(job: GeometryJob, previewQuality: Quality = "preview") {
+  const signature = JSON.stringify([previewQuality, job]);
   const [result, setResult] = useState<Result | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const mainThread = useRef(false);
@@ -48,6 +48,7 @@ export function useGeometry(job: GeometryJob) {
   const waiters = useRef(new Map<number, Waiter>());
   const signatures = useRef(new Map<number, string>());
   const jobRef = useRef(job);
+  const qualityRef = useRef(previewQuality);
 
   const apply = useCallback((data: WorkerResponse) => {
     const waiter = waiters.current.get(data.id);
@@ -100,7 +101,7 @@ export function useGeometry(job: GeometryJob) {
       workerRef.current = null;
       const id = previewId.current;
       if (id > 0) {
-        send({ id, quality: "preview", job: jobRef.current });
+        send({ id, quality: qualityRef.current, job: jobRef.current });
       }
     };
     return () => {
@@ -110,13 +111,14 @@ export function useGeometry(job: GeometryJob) {
   }, [apply, send]);
 
   useEffect(() => {
-    const parsed = JSON.parse(signature) as GeometryJob;
+    const [quality, parsed] = JSON.parse(signature) as [Quality, GeometryJob];
     jobRef.current = parsed;
+    qualityRef.current = quality;
     const id = ++seq.current;
     previewId.current = id;
     signatures.current.set(id, signature);
     const timer = window.setTimeout(() => {
-      send({ id, quality: "preview", job: parsed });
+      send({ id, quality, job: parsed });
     }, 160);
     return () => window.clearTimeout(timer);
   }, [send, signature]);
