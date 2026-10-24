@@ -1,10 +1,13 @@
 "use client";
 
-import { Grid, OrbitControls } from "@react-three/drei";
+import { Environment, Grid, Lightformer, OrbitControls } from "@react-three/drei";
 import { Canvas, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import * as THREE from "three";
+import type * as React from "react";
 import type { MeshPart } from "@/lib/geometry/protocol";
+import { previewGeometry } from "@/lib/geometry/preview-mesh";
+import type { PreviewQuality } from "@/lib/preview-quality";
 
 const FILAMENT = ["#d4d4d4", "#c8c8c8", "#dcdcdc", "#bdbdbd", "#d0d0d0", "#c4c4c4"];
 const FILAMENT_DARK = ["#b8b8b8", "#a8a8a8", "#c4c4c4", "#9c9c9c", "#b0b0b0", "#a2a2a2"];
@@ -16,39 +19,40 @@ type Orbit = {
   maxDistance: number;
 };
 
-function toYUp(part: MeshPart) {
-  const count = part.positions.length / 3;
-  const positions = new Float32Array(part.positions.length);
-  for (let index = 0; index < count; index += 1) {
-    const x = part.positions[index * 3] + part.placeX;
-    const y = part.positions[index * 3 + 1] + part.placeY;
-    const z = part.positions[index * 3 + 2] + part.placeZ;
-    positions[index * 3] = x;
-    positions[index * 3 + 1] = z;
-    positions[index * 3 + 2] = -y;
-  }
-  return positions;
-}
-
-function PartMesh({ part, color }: { part: MeshPart; color: string }) {
-  const geometry = useMemo(() => {
-    const next = new THREE.BufferGeometry();
-    next.setAttribute("position", new THREE.BufferAttribute(toYUp(part), 3));
-    next.setIndex(new THREE.BufferAttribute(part.indices, 1));
-    next.computeVertexNormals();
-    return next;
-  }, [part]);
+function PartMesh({
+  part,
+  color,
+  quality,
+}: {
+  part: MeshPart;
+  color: string;
+  quality: PreviewQuality;
+}) {
+  const geometry = useMemo(() => previewGeometry(part, quality), [part, quality]);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
 
   return (
     <mesh geometry={geometry}>
-      <meshStandardMaterial
-        color={color}
-        roughness={0.72}
-        metalness={0.04}
-        side={THREE.DoubleSide}
-      />
+      {quality === "high" ? (
+        <meshPhysicalMaterial
+          color={color}
+          roughness={0.58}
+          metalness={0.02}
+          clearcoat={0.12}
+          clearcoatRoughness={0.6}
+          envMapIntensity={0.55}
+          side={THREE.DoubleSide}
+        />
+      ) : (
+        <meshStandardMaterial
+          color={color}
+          roughness={0.72}
+          metalness={0.04}
+          flatShading
+          side={THREE.DoubleSide}
+        />
+      )}
     </mesh>
   );
 }
@@ -134,8 +138,12 @@ export function Preview({
   status,
   ms,
   error,
+  quality,
+  toolbar,
 }: {
   parts: MeshPart[];
+  quality: PreviewQuality;
+  toolbar?: React.ReactNode;
   status: "rendering" | "ready" | "error";
   ms: number;
   error: string | null;
@@ -148,14 +156,22 @@ export function Preview({
   return (
     <div className="absolute inset-0 bg-background">
       <Canvas
+        key={quality}
         className="h-full w-full"
-        dpr={[1, 1.75]}
-        gl={{ alpha: true, antialias: true }}
+        dpr={quality === "high" ? [1, 2] : [1, 1.25]}
+        gl={{ alpha: true, antialias: quality === "high" }}
         camera={{ fov: 32, position: [180, 130, 190], near: 0.1, far: 5000 }}
       >
         <ambientLight intensity={0.72} />
         <directionalLight position={[80, 140, 60]} intensity={1.15} />
         <directionalLight position={[-70, 40, -40]} intensity={0.35} />
+        {quality === "high" ? (
+          <Environment resolution={64} frames={1}>
+            <Lightformer form="rect" intensity={1.4} position={[0, 6, 0]} rotation-x={Math.PI / 2} scale={[12, 12, 1]} />
+            <Lightformer form="rect" intensity={0.6} position={[-6, 2, 4]} rotation-y={Math.PI / 3} scale={[8, 4, 1]} />
+            <Lightformer form="rect" intensity={0.4} position={[6, 1, -4]} rotation-y={-Math.PI / 2} scale={[8, 4, 1]} />
+          </Environment>
+        ) : null}
         <Grid
           args={[2400, 2400]}
           cellSize={42}
@@ -170,7 +186,12 @@ export function Preview({
           position={[0, -0.25, 0]}
         />
         {parts.map((part, index) => (
-          <PartMesh key={part.name} part={part} color={colors[index % colors.length]} />
+          <PartMesh
+            key={part.name}
+            part={part}
+            quality={quality}
+            color={colors[index % colors.length]}
+          />
         ))}
         <Fit parts={parts} />
         <OrbitControls
@@ -182,6 +203,7 @@ export function Preview({
         />
       </Canvas>
       <CropMarks />
+      {toolbar ? <div className="absolute bottom-4 left-4">{toolbar}</div> : null}
       {badge ? (
         <div className="pointer-events-none absolute top-3 right-4 font-mono text-[10px] tracking-[0.18em] text-muted-foreground">
           {badge}

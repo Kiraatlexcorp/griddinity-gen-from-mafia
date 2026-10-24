@@ -10,6 +10,8 @@ import { PresetsCard } from "@/components/studio/presets-card";
 import type { PickedPreset } from "@/lib/presets";
 import { Preview } from "@/components/studio/preview";
 import { useGeometry } from "@/components/studio/use-geometry";
+import { QualityToggle, usePreviewQuality } from "@/components/studio/quality-toggle";
+import { geometryQuality } from "@/lib/preview-quality";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -86,11 +88,15 @@ export function Studio() {
   const [exporting, setExporting] = useState<null | "stl" | "3mf">(null);
   const [exportError, setExportError] = useState<string | null>(null);
 
+  const [previewQuality, setPreviewQuality] = usePreviewQuality();
   const job =
     state.tab === "bin"
       ? ({ kind: "bin", params: state.bin } as const)
       : ({ kind: "baseplate", params: state.plate } as const);
-  const { parts, status, ms, error, exportMesh } = useGeometry(job);
+  const { parts, status, ms, error, exportMesh } = useGeometry(
+    job,
+    geometryQuality(previewQuality),
+  );
   const plan = planBaseplate(state.plate);
   const foot = binFootprint(state.bin.gridX, state.bin.gridY);
   const height = binHeight(state.bin.gridZ, state.bin.lip);
@@ -303,7 +309,14 @@ export function Studio() {
             </Alert>
           ) : null}
           <Card className="relative min-h-[60svh] flex-1 gap-0 p-0 md:min-h-0">
-            <Preview parts={parts} status={status} ms={ms} error={error} />
+            <Preview
+              parts={parts}
+              status={status}
+              ms={ms}
+              error={error}
+              quality={previewQuality}
+              toolbar={<QualityToggle value={previewQuality} onChange={setPreviewQuality} />}
+            />
           </Card>
         </div>
       </SidebarInset>
