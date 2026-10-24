@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
+import { InfoTip } from "@/components/studio/info-tip";
+import { Segmented } from "@/components/studio/segmented";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -16,6 +18,7 @@ import {
   MeasureField,
   SelectField,
   SwitchField,
+  FieldWarning,
 } from "@/components/studio/fields";
 import { Input } from "@/components/ui/input";
 import { cleanLabelText, LABEL_TEXT_MAX } from "@/lib/geometry/pixel-font";
@@ -36,6 +39,7 @@ import {
   type BinParams,
   type LabelPosition,
   type LidParams,
+  type LidGrip,
 } from "@/lib/params";
 import { lidHeight } from "@/lib/geometry/build";
 import {
@@ -53,41 +57,34 @@ import {
 function Choice<T extends string>({
   label,
   hint,
+  warning,
   value,
   options,
   onChange,
 }: {
   label: string;
   hint?: string;
+  /** Stays visible inline, unlike the hint. */
+  warning?: string;
   value: T;
   options: { value: T; label: string }[];
   onChange: (value: T) => void;
 }) {
+  const id = useId();
   return (
     <Field>
-      <FieldLabel>{label}</FieldLabel>
-      <ToggleGroup
-        size="sm"
-        spacing={0}
-        value={[value]}
-        onValueChange={(next) => {
-          const picked = next[next.length - 1];
-          if (picked) onChange(picked as T);
-        }}
-        data-slot="tune-segments"
-        className="tune-segments w-full"
-      >
-        {options.map((option) => (
-          <ToggleGroupItem
-            key={option.value}
-            value={option.value}
-            className="tune-segment flex-1 px-1.5"
-          >
-            {option.label}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
-      {hint ? <FieldDescription>{hint}</FieldDescription> : null}
+      <div className="flex items-center">
+        <FieldLabel id={`${id}-label`}>{label}</FieldLabel>
+        {hint ? <InfoTip id={`${id}-hint`} label={label} text={hint} /> : null}
+      </div>
+      <Segmented
+        aria-labelledby={`${id}-label`}
+        aria-describedby={hint ? `${id}-hint` : undefined}
+        value={value}
+        options={options}
+        onChange={onChange}
+      />
+      <FieldWarning text={warning} />
     </Field>
   );
 }
@@ -368,11 +365,8 @@ export function PlateControls({
           <SwitchField
             id="plate-half"
             label="Half-grid sockets"
-            hint={
-              plate.half
-                ? "21 mm sockets take half-grid bins and whole bins alike. Magnets, screws and weights are off at this pitch."
-                : "Switch to 21 mm sockets for half-grid bins."
-            }
+            hint="21 mm sockets take half-grid bins and whole bins alike."
+            warning={plate.half ? "Magnets, screws and weights are off at this pitch." : undefined}
             checked={plate.half ?? false}
             onChange={(half) => patch({ half })}
           />
@@ -395,8 +389,17 @@ export function PlateControls({
           />
           {plate.connectors !== "none" ? (
             <Field>
-              <FieldLabel>Edges</FieldLabel>
+              <div className="flex items-center">
+                <FieldLabel id="plate-edges-label">Edges</FieldLabel>
+                <InfoTip
+                  id="plate-edges-hint"
+                  label="Edges"
+                  text="Joints sit on the inner grid lines, where the frame is solid, so an edge one cell long has none. Seams between bed pieces always get them."
+                />
+              </div>
               <ToggleGroup
+                aria-labelledby="plate-edges-label"
+                aria-describedby="plate-edges-hint"
                 variant="outline"
                 size="sm"
                 spacing={0}
@@ -419,11 +422,6 @@ export function PlateControls({
                   </ToggleGroupItem>
                 ))}
               </ToggleGroup>
-              <FieldDescription>
-                Joints sit on the inner grid lines, where the frame is solid, so
-                an edge one cell long has none. Seams between bed pieces always
-                get them.
-              </FieldDescription>
             </Field>
           ) : null}
         </FieldGroup>
@@ -725,13 +723,8 @@ export function BinControls({
           ) : null}
           <Choice
             label="Lip style"
-            hint={
-              bin.lip === "default"
-                ? "Standard 4.4 mm stacking lip."
-                : bin.lip === "thin"
-                  ? "Same outside and height, about half the wall. Still stacks, saves filament."
-                  : "Flat top, 4.4 mm lower. Bins will not lock when stacked."
-            }
+            hint="Default is the standard 4.4 mm stacking lip. Thin keeps the outside and height with about half the wall: still stacks, saves filament. None gives a flat top, 4.4 mm lower."
+            warning={bin.lip === "none" ? "No stacking lip: bins will not lock when stacked." : undefined}
             value={bin.lip}
             options={[
               { value: "default", label: "Default" },
@@ -821,12 +814,16 @@ export function LidControls({
               onChange={(gridY) => onBinChange({ ...bin, gridY: snapUnits(gridY, bin.half) })}
             />
           </div>
-          <SwitchField
-            id="lid-notch"
-            label="Finger notch"
-            hint="A scallop in the front edge to lift the lid off."
-            checked={lid.notch}
-            onChange={(notch) => onChange({ ...lid, notch })}
+          <Choice<LidGrip>
+            label="Grip"
+            hint="Handle is a square pocket in the top centre with a bar across it, flush with the socket floor. Hole is a 20 mm square finger hole. Both leave the top sockets clear, so bins still stack on the lid."
+            value={lid.grip}
+            options={[
+              { value: "none", label: "None" },
+              { value: "handle", label: "Handle" },
+              { value: "hole", label: "Hole" },
+            ]}
+            onChange={(grip) => onChange({ ...lid, grip })}
           />
         </FieldGroup>
       </SectionCard>

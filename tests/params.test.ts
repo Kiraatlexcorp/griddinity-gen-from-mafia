@@ -42,7 +42,7 @@ describe("shareable URLs", () => {
         dividerHeight: 65,
         labelText: "M3 SCREWS",
       },
-      lid: { notch: false },
+      lid: { grip: "none" as const },
     };
     const decoded = decodeState(encodeState(state));
     expect(decoded).toEqual(state);
