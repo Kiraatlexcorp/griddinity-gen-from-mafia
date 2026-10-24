@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Segmented } from "@/components/studio/segmented";
 import {
   DEFAULT_PREVIEW_QUALITY,
   PREVIEW_QUALITY_KEY,
@@ -42,23 +42,12 @@ export function QualityToggle({
   onChange: (next: PreviewQuality) => void;
 }) {
   return (
-    <ToggleGroup
+    <Segmented
       aria-label="Preview quality"
-      variant="outline"
-      size="sm"
-      spacing={0}
-      value={[value]}
-      onValueChange={(next) => {
-        const picked = next[next.length - 1];
-        if (picked) onChange(parsePreviewQuality(picked));
-      }}
-      className="bg-card/90 backdrop-blur"
-    >
-      {PREVIEW_QUALITY_OPTIONS.map((option) => (
-        <ToggleGroupItem key={option.value} value={option.value} className="px-2.5">
-          {option.label}
-        </ToggleGroupItem>
-      ))}
-    </ToggleGroup>
+      value={value}
+      options={PREVIEW_QUALITY_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+      onChange={(next) => onChange(parsePreviewQuality(next))}
+      className="w-auto bg-card/90 backdrop-blur"
+    />
   );
 }

@@ -645,3 +645,66 @@
 @media (prefers-reduced-motion: reduce) {
   .tune-field, .tune-segment { transition: none; }
 }
+
+/* ── Info tip: caption behind a small icon after each label ── */
+.info-tip-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
+  border-radius: 9999px;
+  color: var(--muted-foreground);
+  opacity: 0.75;
+  vertical-align: middle;
+  cursor: help;
+  transition:
+    color var(--duration-quick) var(--ease-smooth-out),
+    opacity var(--duration-quick) var(--ease-smooth-out);
+}
+.info-tip-trigger svg {
+  width: 14px;
+  height: 14px;
+}
+.info-tip-trigger:hover,
+.info-tip-trigger[data-popup-open],
+.info-tip-trigger:focus-visible {
+  color: var(--foreground);
+  opacity: 1;
+  outline: none;
+}
+.info-tip-trigger:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 70%, transparent);
+}
+.info-tip-popup {
+  max-width: 260px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--primary) 35%, var(--border));
+  background: color-mix(in oklab, var(--popover) 94%, var(--primary));
+  color: var(--popover-foreground);
+  font-size: 12px;
+  line-height: 1.45;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
+  transform-origin: var(--transform-origin);
+  transition:
+    opacity var(--duration-fast) var(--ease-smooth-out),
+    transform var(--duration-fast) var(--ease-bounce);
+}
+.info-tip-popup[data-starting-style],
+.info-tip-popup[data-ending-style] {
+  opacity: 0;
+  transform: translateY(4px) scale(0.96);
+}
+.field-warning {
+  font-size: 12px;
+  line-height: 1.4;
+  color: color-mix(in oklab, var(--primary) 70%, var(--foreground));
+}
+@media (prefers-reduced-motion: reduce) {
+  .info-tip-popup {
+    transition: opacity var(--duration-quick) linear;
+    transform: none !important;
+  }
+}
