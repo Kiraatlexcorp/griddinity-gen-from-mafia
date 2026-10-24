@@ -1,7 +1,7 @@
 export function MafiaLogo({ className }: { className?: string }) {
-  // Original ACME badge artwork, kept unchanged under the Mafia name (app/icon.svg and app/favicon.ico match). Original badge: a maroon starburst with a cream outline and a tilted maroon banner with cream lettering. Drawn for this app.
+  // Original ACME badge artwork, kept unchanged under the ACMEE brand (app/icon.svg and app/favicon.ico match). Original badge: a maroon starburst with a cream outline and a tilted maroon banner with cream lettering. Drawn for this app.
   return (
-    <svg viewBox="0 0 64 64" className={className} role="img" aria-label="Mafia">
+    <svg viewBox="0 0 64 64" className={className} role="img" aria-label="ACMEE">
       <polygon
         points="32.00,2.00 37.56,7.63 45.02,4.97 47.59,12.45 55.45,13.30 54.52,21.15 61.25,25.32 57.00,32.00 61.25,38.68 54.52,42.85 55.45,50.70 47.59,51.55 45.02,59.03 37.56,56.37 32.00,62.00 26.44,56.37 18.98,59.03 16.41,51.55 8.55,50.70 9.48,42.85 2.75,38.68 7.00,32.00 2.75,25.32 9.48,21.15 8.55,13.30 16.41,12.45 18.98,4.97 26.44,7.63"
         fill="#800020"

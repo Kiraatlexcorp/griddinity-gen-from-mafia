@@ -42,10 +42,6 @@ function Wordmark() {
     <div className="flex min-w-0 items-center gap-1.5">
       <MafiaLogo className="size-9 shrink-0 -my-1 drop-shadow-[0_1px_0_rgb(0_0_0/0.35)]" />
       <span className="flex min-w-0 items-baseline gap-1 font-heading leading-none">
-        <span className="shrink-0 whitespace-nowrap text-[17px] font-black tracking-tight text-highlight">
-          Mafia
-        </span>
-        <span aria-hidden className="shrink-0 text-muted-foreground">·</span>
         <span className="truncate whitespace-nowrap text-[15px] font-semibold tracking-tight">
           Gridfinity Studio
         </span>
@@ -127,12 +123,12 @@ export function Studio() {
 
   const stem =
     state.tab === "bin"
-      ? `mafia-bin-${state.bin.gridX}x${state.bin.gridY}x${state.bin.gridZ}`
+      ? `acmee-bin-${state.bin.gridX}x${state.bin.gridY}x${state.bin.gridZ}`
       : state.tab === "lid"
-        ? `mafia-lid-${state.bin.gridX}x${state.bin.gridY}`
+        ? `acmee-lid-${state.bin.gridX}x${state.bin.gridY}`
         : "error" in plan
-        ? "mafia-baseplate"
-        : `mafia-baseplate-${plan.gridX}x${plan.gridY}`;
+        ? "acmee-baseplate"
+        : `acmee-baseplate-${plan.gridX}x${plan.gridY}`;
 
   async function save(kind: "stl" | "3mf") {
     setExporting(kind);
@@ -325,7 +321,7 @@ export function Studio() {
 
       <SidebarInset className="min-h-0 overflow-y-auto md:overflow-hidden md:ring-1 md:ring-border">
         <header className="sticky top-0 z-10 flex h-(--header-height) shrink-0 items-center gap-2 border-b bg-background/90 px-3 backdrop-blur md:rounded-t-xl lg:px-5">
-          <h1 className="sr-only">Mafia · Gridfinity Studio</h1>
+          <h1 className="sr-only">Gridfinity Studio by ACMEE</h1>
           <SidebarTrigger className="-ml-1" />
           <span aria-hidden className="mx-1 h-4 w-px bg-border" />
           <span className="font-heading text-base font-semibold">

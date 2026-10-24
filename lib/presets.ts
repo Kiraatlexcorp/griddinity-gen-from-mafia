@@ -100,7 +100,7 @@ export const PRESETS: Preset[] = [
 
 export const PRESET_GROUPS: { id: PresetGroup; label: string }[] = [
   { id: "classic", label: "Gridfinity classics" },
-  { id: "mafia", label: "The Family business" },
+  { id: "mafia", label: "ACMEE" },
 ];
 
 export function presetQuery(preset: Preset) {
