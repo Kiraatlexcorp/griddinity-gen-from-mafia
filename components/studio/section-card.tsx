@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useSyncExternalStore, type ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import {
   Box,
   ChevronDown,
@@ -21,56 +21,35 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-const KEY = "acme-sections";
-
-function readSections(): Record<string, boolean> {
-  try {
-    return JSON.parse(localStorage.getItem(KEY) ?? "{}") as Record<string, boolean>;
-  } catch {
-    return {};
-  }
-}
-
+/**
+ * Collapsed cards for this visit only. Every card starts open on every tab and
+ * every page load; collapsing is not remembered across visits.
+ */
+const collapsed = new Set<string>();
 const listeners = new Set<() => void>();
 
 function subscribe(onChange: () => void) {
   listeners.add(onChange);
-  window.addEventListener("storage", onChange);
   return () => {
     listeners.delete(onChange);
-    window.removeEventListener("storage", onChange);
   };
 }
 
-/** Open state for one control card, remembered across visits. The server render is always open. */
+/** Open state for one control card. Starts open; the server render is open too. */
 export function useSectionOpen(id: string): [boolean, (open: boolean) => void] {
   const open = useSyncExternalStore(
     subscribe,
-    () => readSections()[id] ?? true,
+    () => !collapsed.has(id),
     () => true,
   );
-  useLayoutEffect(() => {
-    if (!open) releasePrePaintRule(id);
-  }, [id, open]);
   return [
     open,
     (next) => {
-      localStorage.setItem(KEY, JSON.stringify({ ...readSections(), [id]: next }));
+      if (next) collapsed.delete(id);
+      else collapsed.add(id);
       for (const listener of listeners) listener();
     },
   ];
-}
-
-/**
- * Before hydration, app/layout.tsx injects CSS that hides collapsed cards.
- * Once this card renders closed itself, drop its rule so it can open again.
- */
-function releasePrePaintRule(id: string) {
-  const style = document.getElementById("acme-sections-pre");
-  if (!style?.textContent) return;
-  const rules = style.textContent.split(/(?=\[data-section=)/).filter((rule) => !rule.startsWith(`[data-section="${id}"]`));
-  if (rules.length === 0) style.remove();
-  else style.textContent = rules.join("");
 }
 
 /** Keyboard focus gets a ring; a tap or click does not leave one behind. */

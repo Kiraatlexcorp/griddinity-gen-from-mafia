@@ -40,9 +40,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Script id="acme-theme" strategy="beforeInteractive">
           {`try{if(localStorage.getItem("acme-theme")==="light")document.documentElement.classList.remove("dark")}catch(e){}`}
         </Script>
-        {/* Hide cards the visitor collapsed before React hydrates, so they never flash open. SectionCard removes its rule once it renders closed. */}
+        {/* Cards always start open now; forget collapse state saved by older versions. */}
         <Script id="acme-sections" strategy="beforeInteractive">
-          {`try{var o=JSON.parse(localStorage.getItem("acme-sections")||"{}"),c="";for(var k in o)if(o[k]===false&&/^[a-z0-9-]+$/.test(k))c+='[data-section="'+k+'"] [data-slot=collapsible-content]{display:none}[data-section="'+k+'"] [data-chevron]{rotate:-90deg}';if(c){var s=document.createElement("style");s.id="acme-sections-pre";s.textContent=c;document.head.appendChild(s)}}catch(e){}`}
+          {`try{localStorage.removeItem("acme-sections")}catch(e){}`}
         </Script>
         {children}
       </body>
