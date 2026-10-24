@@ -468,3 +468,180 @@
     transition: none;
   }
 }
+
+/* ── Context cards (beautifului.dev ContextCards) mapped onto the dark theme ── */
+.ctx-card {
+  --ink: var(--foreground);
+  --ink-2: color-mix(in oklab, var(--foreground) 72%, transparent);
+  --ink-3: var(--muted-foreground);
+  --surface: var(--card);
+  --inset: color-mix(in oklab, var(--muted) 80%, var(--background));
+  --line: var(--border);
+  --hairline: color-mix(in oklab, var(--foreground) 8%, transparent);
+  --ctx-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow:
+    0 0 0 1px var(--hairline),
+    0 1px 2px rgb(0 0 0 / 0.25),
+    0 8px 24px -12px rgb(0 0 0 / 0.45);
+  animation: ctx-fade-up 400ms var(--ctx-ease) both;
+  animation-delay: calc((var(--ctx-base, 0) + var(--ctx-i, 0)) * 100ms);
+}
+.motion-stagger > :nth-child(2) { --ctx-base: 1; }
+.ctx-card:nth-child(2) { --ctx-i: 1; }
+.ctx-card:nth-child(3) { --ctx-i: 2; }
+.ctx-card:nth-child(4) { --ctx-i: 3; }
+.ctx-card:nth-child(5) { --ctx-i: 4; }
+.ctx-card:nth-child(6) { --ctx-i: 5; }
+.ctx-head {
+  box-shadow: inset 0 -1px 0 transparent;
+  transition: box-shadow var(--duration-fast) var(--ease-smooth-out);
+}
+.ctx-head[data-open="true"] {
+  box-shadow: inset 0 -1px 0 var(--line);
+}
+.ctx-body {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+.ctx-chip {
+  height: 1.5rem !important;
+  border-radius: 9999px !important;
+  padding-inline: 0.625rem !important;
+  font-size: 12px !important;
+  background: var(--inset) !important;
+  border-color: var(--hairline) !important;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.25), inset 0 1px 0 color-mix(in oklab, var(--foreground) 6%, transparent);
+  animation: ctx-chip-in 300ms var(--ctx-ease) both;
+  animation-delay: calc((var(--ctx-base, 0) + var(--ctx-i, 0)) * 100ms + 150ms);
+}
+@keyframes ctx-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+}
+@keyframes ctx-chip-in {
+  from { opacity: 0; transform: scale(0.95); }
+}
+
+/* Accordion: transitions.dev P21 (250ms smooth-out, height + opacity + 2px blur, chevron flip). */
+.ctx-panel {
+  height: var(--collapsible-panel-height);
+  overflow: hidden;
+  opacity: 1;
+  filter: blur(0);
+  transition:
+    height var(--duration-fast) var(--ease-smooth-out),
+    opacity var(--duration-fast) var(--ease-smooth-out),
+    filter var(--duration-fast) var(--ease-smooth-out);
+}
+.ctx-panel[data-starting-style],
+.ctx-panel[data-ending-style] {
+  height: 0;
+  opacity: 0;
+  filter: blur(var(--motion-blur));
+}
+.ctx-chevron {
+  transform: scaleY(1);
+  transition: transform var(--duration-fast) var(--ease-smooth-out);
+}
+.ctx-chevron path { vector-effect: non-scaling-stroke; }
+.ctx-chevron[data-open="true"] { transform: scaleY(-1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ctx-card, .ctx-chip { animation: none; }
+  .ctx-panel, .ctx-chevron, .ctx-head { transition: none; }
+}
+
+/* Fine-tune controls — beautifului.dev FineTuneCard, primary accent instead of blue. */
+.tune-field {
+  display: flex;
+  height: 1.625rem;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 6px;
+  background: color-mix(in oklch, var(--foreground) 6%, transparent);
+  padding-inline: 0.5rem;
+  transition: background-color 150ms, box-shadow 150ms;
+}
+.tune-field:focus-within {
+  background: color-mix(in oklch, var(--primary) 14%, transparent);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+.tune-field-label {
+  flex: none;
+  cursor: ew-resize;
+  user-select: none;
+  touch-action: none;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  outline: none;
+}
+.tune-field-label:focus-visible { color: var(--primary); }
+.tune-field-input {
+  min-width: 0;
+  flex: 1;
+  background: transparent;
+  text-align: right;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
+  outline: none;
+}
+.tune-field-unit {
+  flex: none;
+  font-size: 11.5px;
+  color: color-mix(in oklch, var(--muted-foreground) 70%, transparent);
+}
+.tune-segments {
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--foreground) 6%, transparent);
+  padding: 2px;
+  gap: 2px;
+}
+.tune-segment {
+  height: 1.5rem;
+  border: 0 !important;
+  border-radius: 6px !important;
+  background: transparent;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  font-weight: 400;
+  transition: background-color 300ms cubic-bezier(0.23, 1, 0.32, 1), color 300ms, box-shadow 300ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.tune-segment[data-pressed],
+.tune-segment[aria-pressed="true"] {
+  background: color-mix(in oklch, var(--foreground) 10%, var(--card)) !important;
+  color: var(--foreground) !important;
+  font-weight: 500;
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--primary) 85%, white 15%), 0 1px 2px oklch(0 0 0 / 0.3);
+}
+.tune-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.625rem;
+}
+.tune-row-label { font-size: 12px; font-weight: 400; color: var(--muted-foreground); }
+.tune-select {
+  height: 1.625rem !important;
+  min-width: 8.5rem;
+  border: 0 !important;
+  border-radius: 6px !important;
+  background: color-mix(in oklch, var(--foreground) 6%, transparent) !important;
+  font-size: 12px;
+}
+.ctx-head .ctx-chevron {
+  box-sizing: content-box;
+  width: 14px;
+  height: 14px;
+  padding: 3px;
+  border-radius: 6px;
+  background: color-mix(in oklch, var(--primary) 22%, transparent);
+  color: color-mix(in oklch, var(--primary) 45%, white);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tune-field, .tune-segment { transition: none; }
+}

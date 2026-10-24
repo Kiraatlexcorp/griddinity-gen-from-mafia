@@ -119,7 +119,9 @@ export function ElementsPanel({
       render={<Card size="sm" className={SECTION_CARD_CLASS} />}
     >
       <SectionHeader
-        title={`Elements (${elements.length})`}
+        id="elements"
+        title="Elements"
+        meta={elements.length}
         open={open}
         action={
           <DropdownMenu>
@@ -145,7 +147,8 @@ export function ElementsPanel({
           </DropdownMenu>
         }
       />
-      <CollapsibleContent className="flex flex-col gap-3 px-3">
+      <CollapsibleContent className="ctx-panel">
+        <div className="ctx-body flex flex-col gap-3 px-3.5 pt-3 pb-3.5">
         {elements.length === 0 ? (
           <FieldDescription>
             No elements. Add a wall to split the bin, a ledge for a shelf, or a scoop to round
@@ -282,6 +285,7 @@ export function ElementsPanel({
         ) : elements.length > 0 ? (
           <FieldDescription>Select an element to edit it.</FieldDescription>
         ) : null}
+        </div>
       </CollapsibleContent>
     </Collapsible>
   );

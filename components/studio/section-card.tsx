@@ -1,11 +1,24 @@
 "use client";
 
 import { useLayoutEffect, useSyncExternalStore, type ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
+import {
+  Box,
+  ChevronDown,
+  Columns3,
+  Frame,
+  Grid3x3,
+  Magnet,
+  PanelTop,
+  Printer,
+  Shapes,
+  Sparkles,
+  Square,
+  Tag,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
 
 const KEY = "acme-sections";
 
@@ -73,7 +86,7 @@ export function SectionChevron({ open, label }: { open: boolean; label: string }
           className={HEADER_BUTTON_FOCUS}
           aria-label={`${open ? "Minimise" : "Expand"} ${label}`}
         >
-          <ChevronDown data-chevron className={cn("transition-transform", !open && "-rotate-90")} />
+          <ChevronDown data-chevron data-open={open} className="ctx-chevron" />
         </Button>
       }
     />
@@ -84,20 +97,44 @@ export function SectionChevron({ open, label }: { open: boolean; label: string }
  * The one header every sidebar card uses: maroon tracked title on the left,
  * optional action, chevron on the right, all centred on one 28 px row.
  */
+const SECTION_ICONS: Record<string, LucideIcon> = {
+  presets: Sparkles,
+  plate: Grid3x3,
+  bed: Printer,
+  frame: Frame,
+  fasteners: Magnet,
+  bin: Box,
+  walls: Square,
+  dividers: Columns3,
+  features: Tag,
+  lid: PanelTop,
+  elements: Shapes,
+};
+
+/**
+ * Context-card header bar (beautifului.dev ContextCards): small primary icon,
+ * 13 px medium title, optional muted tabular meta, action, chevron. The
+ * hairline under it shows while the card is open.
+ */
 export function SectionHeader({
+  id,
   title,
   open,
+  meta,
   action,
 }: {
+  id?: string;
   title: string;
   open: boolean;
+  meta?: ReactNode;
   action?: ReactNode;
 }) {
+  const Icon = id ? SECTION_ICONS[id] : undefined;
   return (
-    <div data-slot="section-header" className="flex h-7 items-center gap-1 px-3">
-      <h2 className="min-w-0 flex-1 truncate font-heading text-[11px] leading-none font-bold tracking-[0.18em] text-highlight uppercase">
-        {title}
-      </h2>
+    <div data-slot="section-header" data-open={open} className="ctx-head flex h-10 items-center gap-2 pr-1.5 pl-3.5">
+      {Icon ? <Icon aria-hidden className="size-3.5 shrink-0 text-highlight" /> : null}
+      <h2 className="min-w-0 flex-1 truncate text-[13px] leading-none font-medium text-foreground">{title}</h2>
+      {meta != null ? <span className="text-xs text-muted-foreground tabular-nums">{meta}</span> : null}
       {action}
       <SectionChevron open={open} label={title} />
     </div>
@@ -121,15 +158,25 @@ export function SectionCard({
       open={open}
       onOpenChange={setOpen}
       data-section={id}
-      render={<Card size="sm" className={cn(SECTION_CARD_CLASS, "motion-rise")} />}
+      render={<Card size="sm" className={SECTION_CARD_CLASS} />}
     >
-      <SectionHeader title={title} open={open} action={action} />
-      <CollapsibleContent>
-        <CardContent className="flex flex-col gap-4 px-3">{children}</CardContent>
-      </CollapsibleContent>
+      <SectionHeader id={id} title={title} open={open} action={action} />
+      <SectionPanel>{children}</SectionPanel>
     </Collapsible>
   );
 }
 
-/** Shared card box: 8 px top/bottom around the 28 px header, 12 px between header and body. */
-export const SECTION_CARD_CLASS = "shrink-0 gap-3 py-2";
+/**
+ * Accordion body, transitions.dev P21: height + opacity + 2px blur over 250ms
+ * smooth-out (Base UI drives --collapsible-panel-height and the start/end styles).
+ */
+export function SectionPanel({ children }: { children: ReactNode }) {
+  return (
+    <CollapsibleContent className="ctx-panel">
+      <CardContent className="ctx-body flex flex-col gap-4 px-3.5 pt-3 pb-3.5">{children}</CardContent>
+    </CollapsibleContent>
+  );
+}
+
+/** Shared context-card box: surface, hairline, soft shadow, staggered fade-up. */
+export const SECTION_CARD_CLASS = "ctx-card shrink-0 gap-0 py-0";

@@ -63,7 +63,6 @@ function Choice<T extends string>({
     <Field>
       <FieldLabel>{label}</FieldLabel>
       <ToggleGroup
-        variant="outline"
         size="sm"
         spacing={0}
         value={[value]}
@@ -71,13 +70,14 @@ function Choice<T extends string>({
           const picked = next[next.length - 1];
           if (picked) onChange(picked as T);
         }}
-        className="w-full"
+        data-slot="tune-segments"
+        className="tune-segments w-full"
       >
         {options.map((option) => (
           <ToggleGroupItem
             key={option.value}
             value={option.value}
-            className="flex-1 px-1.5"
+            className="tune-segment flex-1 px-1.5"
           >
             {option.label}
           </ToggleGroupItem>
@@ -142,6 +142,7 @@ export function PlateControls({
               type="button"
               variant="outline"
               size="sm"
+              className="ctx-chip"
               onClick={() =>
                 patch({ unit: "mm", width: 252, depth: 168, pad: false })
               }
@@ -152,6 +153,7 @@ export function PlateControls({
               type="button"
               variant="outline"
               size="sm"
+              className="ctx-chip"
               onClick={() =>
                 patch({ unit: "mm", width: 500, depth: 380, pad: true })
               }
@@ -185,30 +187,32 @@ export function PlateControls({
               });
             }}
           />
-          <MeasureField
-            label="Width"
-            suffix={mm ? "MM" : "U"}
-            value={plate.width}
-            min={mm ? 42 : 1}
-            max={mm ? 800 : 16}
-            step={mm ? 1 : 1}
-            digits={mm ? 0 : 0}
-            onChange={(width) =>
-              patch({ width: mm ? width : Math.round(width) })
-            }
-          />
-          <MeasureField
-            label="Depth"
-            suffix={mm ? "MM" : "U"}
-            value={plate.depth}
-            min={mm ? 42 : 1}
-            max={mm ? 800 : 16}
-            step={1}
-            digits={0}
-            onChange={(depth) =>
-              patch({ depth: mm ? depth : Math.round(depth) })
-            }
-          />
+          <div className="grid grid-cols-2 gap-2">
+            <MeasureField
+              label="Width"
+              suffix={mm ? "MM" : "U"}
+              value={plate.width}
+              min={mm ? 42 : 1}
+              max={mm ? 800 : 16}
+              step={mm ? 1 : 1}
+              digits={mm ? 0 : 0}
+              onChange={(width) =>
+                patch({ width: mm ? width : Math.round(width) })
+              }
+            />
+            <MeasureField
+              label="Depth"
+              suffix={mm ? "MM" : "U"}
+              value={plate.depth}
+              min={mm ? 42 : 1}
+              max={mm ? 800 : 16}
+              step={1}
+              digits={0}
+              onChange={(depth) =>
+                patch({ depth: mm ? depth : Math.round(depth) })
+              }
+            />
+          </div>
           {mm ? (
             <Choice
               label="Leftover space"
@@ -450,115 +454,123 @@ export function BinControls({
         ) : null}
 
         <FieldGroup className="gap-4">
-          <MeasureField
-            label="Width"
-            suffix="CELLS"
-            value={bin.gridX}
-            min={1}
-            max={12}
-            step={1}
-            digits={0}
-            onChange={(gridX) => patch({ gridX: Math.round(gridX) })}
-          />
-          <MeasureField
-            label="Depth"
-            suffix="CELLS"
-            value={bin.gridY}
-            min={1}
-            max={12}
-            step={1}
-            digits={0}
-            onChange={(gridY) => patch({ gridY: Math.round(gridY) })}
-          />
-          <MeasureField
-            label="Height"
-            suffix="× 7 MM"
-            hint="Stacking lip, when on, adds 4.4 mm above this."
-            value={bin.gridZ}
-            min={1}
-            max={12}
-            step={1}
-            digits={0}
-            onChange={(gridZ) => patch({ gridZ: Math.round(gridZ) })}
-          />
+          <div className="grid grid-cols-2 gap-2">
+            <MeasureField
+              label="Width"
+              suffix="CELLS"
+              value={bin.gridX}
+              min={1}
+              max={12}
+              step={1}
+              digits={0}
+              onChange={(gridX) => patch({ gridX: Math.round(gridX) })}
+            />
+            <MeasureField
+              label="Depth"
+              suffix="CELLS"
+              value={bin.gridY}
+              min={1}
+              max={12}
+              step={1}
+              digits={0}
+              onChange={(gridY) => patch({ gridY: Math.round(gridY) })}
+            />
+            <MeasureField
+              label="Height"
+              suffix="× 7 MM"
+              hint="Stacking lip, when on, adds 4.4 mm above this."
+              value={bin.gridZ}
+              min={1}
+              max={12}
+              step={1}
+              digits={0}
+              onChange={(gridZ) => patch({ gridZ: Math.round(gridZ) })}
+            />
+          </div>
         </FieldGroup>
       </SectionCard>
 
       <SectionCard id="walls" title="Walls">
         <FieldGroup className="gap-4">
-          <MeasureField
-            label="Outer wall"
-            suffix="MM"
-            hint="1.2 mm prints cleanly on a 0.4 mm nozzle. The floor uses the same thickness in lite mode."
-            value={bin.wall}
-            min={BIN_LIMITS.wall.min}
-            max={BIN_LIMITS.wall.max}
-            step={BIN_LIMITS.wall.step}
-            digits={1}
-            onChange={(wall) => patch({ wall: Math.round(wall * 10) / 10 })}
-          />
-          <MeasureField
-            label="Inner wall"
-            suffix="MM"
-            hint="Thickness of every Wall element."
-            value={bin.innerWall}
-            min={BIN_LIMITS.innerWall.min}
-            max={BIN_LIMITS.innerWall.max}
-            step={BIN_LIMITS.innerWall.step}
-            digits={1}
-            onChange={(innerWall) =>
-              patch({ innerWall: Math.round(innerWall * 10) / 10 })
-            }
-          />
+          <div className="grid grid-cols-2 gap-2">
+            <MeasureField
+              label="Outer wall"
+              suffix="MM"
+              hint="1.2 mm prints cleanly on a 0.4 mm nozzle. The floor uses the same thickness in lite mode."
+              value={bin.wall}
+              min={BIN_LIMITS.wall.min}
+              max={BIN_LIMITS.wall.max}
+              step={BIN_LIMITS.wall.step}
+              digits={1}
+              onChange={(wall) => patch({ wall: Math.round(wall * 10) / 10 })}
+            />
+            <MeasureField
+              label="Inner wall"
+              suffix="MM"
+              hint="Thickness of every Wall element."
+              value={bin.innerWall}
+              min={BIN_LIMITS.innerWall.min}
+              max={BIN_LIMITS.innerWall.max}
+              step={BIN_LIMITS.innerWall.step}
+              digits={1}
+              onChange={(innerWall) =>
+                patch({ innerWall: Math.round(innerWall * 10) / 10 })
+              }
+            />
+          </div>
         </FieldGroup>
       </SectionCard>
       <SectionCard id="dividers" title="Dividers">
         <FieldGroup className="gap-4">
-          <MeasureField
-            label="Across the width"
-            suffix="WALLS"
-            hint={`${dividersX.count + 1} column${dividersX.count ? "s" : ""}, ${formatMm(dividersX.opening)} mm each.`}
-            value={bin.dividersX}
-            min={BIN_LIMITS.dividers.min}
-            max={BIN_LIMITS.dividers.max}
-            step={1}
-            digits={0}
-            onChange={(value) => patch({ dividersX: Math.round(value) })}
-          />
-          <MeasureField
-            label="Across the depth"
-            suffix="WALLS"
-            hint={`${dividersY.count + 1} row${dividersY.count ? "s" : ""}, ${formatMm(dividersY.opening)} mm each.`}
-            value={bin.dividersY}
-            min={BIN_LIMITS.dividers.min}
-            max={BIN_LIMITS.dividers.max}
-            step={1}
-            digits={0}
-            onChange={(value) => patch({ dividersY: Math.round(value) })}
-          />
+          <div className="grid grid-cols-2 gap-2">
+            <MeasureField
+              label="Across the width"
+              suffix="WALLS"
+              hint={`${dividersX.count + 1} column${dividersX.count ? "s" : ""}, ${formatMm(dividersX.opening)} mm each.`}
+              value={bin.dividersX}
+              min={BIN_LIMITS.dividers.min}
+              max={BIN_LIMITS.dividers.max}
+              step={1}
+              digits={0}
+              onChange={(value) => patch({ dividersX: Math.round(value) })}
+            />
+            <MeasureField
+              label="Across the depth"
+              suffix="WALLS"
+              hint={`${dividersY.count + 1} row${dividersY.count ? "s" : ""}, ${formatMm(dividersY.opening)} mm each.`}
+              value={bin.dividersY}
+              min={BIN_LIMITS.dividers.min}
+              max={BIN_LIMITS.dividers.max}
+              step={1}
+              digits={0}
+              onChange={(value) => patch({ dividersY: Math.round(value) })}
+            />
+          </div>
           {bin.dividersX + bin.dividersY > 0 ? (
             <>
-              <MeasureField
-                label="Divider thickness"
-                suffix="MM"
-                value={bin.dividerWall}
-                min={BIN_LIMITS.dividerWall.min}
-                max={BIN_LIMITS.dividerWall.max}
-                step={BIN_LIMITS.dividerWall.step}
-                digits={1}
-                onChange={(value) => patch({ dividerWall: Math.round(value * 10) / 10 })}
-              />
-              <MeasureField
-                label="Divider height"
-                suffix="%"
-                hint={`${formatMm((cavity.cavity * bin.dividerHeight) / 100)} mm above the floor. 100% reaches the rim.`}
-                value={bin.dividerHeight}
-                min={BIN_LIMITS.dividerHeight.min}
-                max={BIN_LIMITS.dividerHeight.max}
-                step={BIN_LIMITS.dividerHeight.step}
-                digits={0}
-                onChange={(value) => patch({ dividerHeight: Math.round(value / 5) * 5 })}
-              />
+              <div className="grid grid-cols-2 gap-2">
+                <MeasureField
+                  label="Divider thickness"
+                  suffix="MM"
+                  value={bin.dividerWall}
+                  min={BIN_LIMITS.dividerWall.min}
+                  max={BIN_LIMITS.dividerWall.max}
+                  step={BIN_LIMITS.dividerWall.step}
+                  digits={1}
+                  onChange={(value) => patch({ dividerWall: Math.round(value * 10) / 10 })}
+                />
+                <MeasureField
+                  label="Divider height"
+                  suffix="%"
+                  hint={`${formatMm((cavity.cavity * bin.dividerHeight) / 100)} mm above the floor. 100% reaches the rim.`}
+                  value={bin.dividerHeight}
+                  min={BIN_LIMITS.dividerHeight.min}
+                  max={BIN_LIMITS.dividerHeight.max}
+                  step={BIN_LIMITS.dividerHeight.step}
+                  digits={0}
+                  onChange={(value) => patch({ dividerHeight: Math.round(value / 5) * 5 })}
+                />
+              </div>
             </>
           ) : null}
           {capped ? (
@@ -683,26 +695,28 @@ export function LidControls({
           </Alert>
         ) : null}
         <FieldGroup className="gap-4">
-          <MeasureField
-            label="Width"
-            suffix="CELLS"
-            value={bin.gridX}
-            min={1}
-            max={12}
-            step={1}
-            digits={0}
-            onChange={(gridX) => onBinChange({ ...bin, gridX: Math.round(gridX) })}
-          />
-          <MeasureField
-            label="Depth"
-            suffix="CELLS"
-            value={bin.gridY}
-            min={1}
-            max={12}
-            step={1}
-            digits={0}
-            onChange={(gridY) => onBinChange({ ...bin, gridY: Math.round(gridY) })}
-          />
+          <div className="grid grid-cols-2 gap-2">
+            <MeasureField
+              label="Width"
+              suffix="CELLS"
+              value={bin.gridX}
+              min={1}
+              max={12}
+              step={1}
+              digits={0}
+              onChange={(gridX) => onBinChange({ ...bin, gridX: Math.round(gridX) })}
+            />
+            <MeasureField
+              label="Depth"
+              suffix="CELLS"
+              value={bin.gridY}
+              min={1}
+              max={12}
+              step={1}
+              digits={0}
+              onChange={(gridY) => onBinChange({ ...bin, gridY: Math.round(gridY) })}
+            />
+          </div>
           <SwitchField
             id="lid-notch"
             label="Finger notch"
