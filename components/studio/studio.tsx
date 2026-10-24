@@ -1,5 +1,7 @@
 "use client";
 
+import { HorrorBanner } from "@/components/studio/horror-banner";
+
 import { Segmented } from "@/components/studio/segmented";
 
 import { MafiaLogo } from "@/components/studio/mafia-logo";
@@ -323,9 +325,7 @@ export function Studio() {
             )}
           </div>
           <IridescentFoil className="motion-rise mt-3 h-14 flex-none rounded-xl [--motion-i:4]">
-            <p className="flex h-full items-center justify-center font-heading text-sm font-semibold tracking-tight text-foreground/90">
-              a product by Le&apos;X
-            </p>
+            <HorrorBanner />
           </IridescentFoil>
         </SidebarContent>
       </Sidebar>
