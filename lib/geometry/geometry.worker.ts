@@ -1,4 +1,4 @@
-import { buildBaseplate, buildBin } from "@/lib/geometry/build";
+import { buildJob } from "@/lib/geometry/build";
 import { loadManifold } from "@/lib/geometry/manifold";
 import type { WorkerRequest, WorkerResponse } from "@/lib/geometry/protocol";
 
@@ -10,10 +10,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   try {
     pending ??= loadManifold();
     const wasm = await pending;
-    const parts =
-      job.kind === "bin"
-        ? buildBin(wasm, job.params, quality)
-        : buildBaseplate(wasm, job.params, quality);
+    const parts = buildJob(wasm, job, quality);
     const transfers: Transferable[] = [];
     for (const part of parts) {
       transfers.push(part.positions.buffer, part.indices.buffer);

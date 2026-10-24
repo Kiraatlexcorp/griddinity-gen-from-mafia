@@ -18,15 +18,12 @@ type Result = {
 async function renderOnMain(request: WorkerRequest): Promise<WorkerResponse> {
   const started = performance.now();
   try {
-    const [{ buildBaseplate, buildBin }, { loadManifold }] = await Promise.all([
+    const [{ buildJob }, { loadManifold }] = await Promise.all([
       import("@/lib/geometry/build"),
       import("@/lib/geometry/manifold"),
     ]);
     const wasm = await loadManifold();
-    const parts =
-      request.job.kind === "bin"
-        ? buildBin(wasm, request.job.params, request.quality)
-        : buildBaseplate(wasm, request.job.params, request.quality);
+    const parts = buildJob(wasm, request.job, request.quality);
     return { id: request.id, ms: performance.now() - started, parts };
   } catch (error) {
     return {

@@ -15,8 +15,8 @@ import {
   tabOutline,
   type Point,
 } from "@/lib/geometry/connectors";
-import type { BaseplateParams, BinParams } from "@/lib/params";
-import type { MeshPart, Quality } from "@/lib/geometry/protocol";
+import type { BaseplateParams, BinParams, LidParams } from "@/lib/params";
+import type { GeometryJob, MeshPart, Quality } from "@/lib/geometry/protocol";
 import { radii, roundedRectPoints, type Radii } from "@/lib/geometry/shape";
 import {
   BASE_HEIGHT_MM,
@@ -30,6 +30,10 @@ import {
   DOVETAIL_HEAD_MM,
   PUZZLE_DEPTH_MM,
   HOLE_FROM_CELL_EDGE_MM,
+  LID_NOTCH_DEPTH_MM,
+  LID_NOTCH_HEIGHT_MM,
+  LID_NOTCH_WIDTH_MM,
+  LID_PLATE_MM,
   MAGNET_HOLE_DEPTH_MM,
   MAGNET_HOLE_RADIUS_MM,
   PITCH_MM,
@@ -720,6 +724,119 @@ export function buildBin(
   }
 }
 
+/**
+ * One base-profile plug over the whole footprint: the same insets a bin's
+ * outer feet have, so it seats in a stacking lip exactly like a bin does.
+ */
+function footprintPlug(
+  wasm: ManifoldToplevel,
+  width: number,
+  depth: number,
+  segments: number,
+): Manifold {
+  const slabs = BASE_STATIONS.map((station, index) => {
+    const atTop = index === BASE_STATIONS.length - 1;
+    return extrude(
+      wasm,
+      CELL_INSET_MM + station.inset,
+      CELL_INSET_MM + station.inset,
+      width - station.inset * 2,
+      depth - station.inset * 2,
+      radii(station.radius),
+      atTop ? station.z - 0.02 : station.z,
+      0.02,
+      segments,
+    );
+  });
+  const hull = wasm.Manifold.hull(slabs);
+  for (const slab of slabs) drop(slab);
+  return hull;
+}
+
+/** Height of a lid: plug, solid plate, then baseplate sockets on top. */
+export function lidHeight() {
+  return BASE_PROFILE_HEIGHT_MM + LID_PLATE_MM + SOCKET_DEPTH_MM;
+}
+
+/**
+ * Stackable lid for a bin of gridX × gridY cells. The underside is a
+ * base-profile plug that drops into the bin's stacking lip; the top is a
+ * baseplate grid (one socket per cell) so another bin stacks on it.
+ * Coordinates match buildBinSolid: cell (0, 0) starts at the origin.
+ */
+export function buildLidSolid(
+  wasm: ManifoldToplevel,
+  gridX: number,
+  gridY: number,
+  params: LidParams,
+  quality: Quality,
+): Manifold {
+  const tess = tessellation(quality);
+  wasm.setCircularSegments(tess.circle);
+  const footprint = binFootprint(gridX, gridY);
+  const plug = footprintPlug(wasm, footprint.width, footprint.depth, tess.corner);
+  const socketFloorZ = BASE_PROFILE_HEIGHT_MM + LID_PLATE_MM;
+  // The top is full pitch like a baseplate so every socket gets the standard
+  // 0.25 mm rim; it overhangs the bin wall by 0.25 mm a side.
+  const top = extrude(
+    wasm,
+    0,
+    0,
+    gridX * PITCH_MM,
+    gridY * PITCH_MM,
+    radii(BASE_TOP_RADIUS_MM + CELL_INSET_MM),
+    BASE_PROFILE_HEIGHT_MM - 0.01,
+    LID_PLATE_MM + SOCKET_DEPTH_MM + 0.01,
+    tess.corner,
+  );
+  let solid = wasm.Manifold.union(plug, top);
+  drop(plug);
+  drop(top);
+  const cutters: Manifold[] = [];
+  for (let ix = 0; ix < gridX; ix += 1) {
+    for (let iy = 0; iy < gridY; iy += 1) {
+      cutters.push(
+        socketCutter(
+          wasm,
+          ix * PITCH_MM + CELL_INSET_MM,
+          iy * PITCH_MM + CELL_INSET_MM,
+          socketFloorZ,
+          true,
+          tess,
+        ),
+      );
+    }
+  }
+  if (params.notch) {
+    // Elliptical scallop in the front edge, centred on the plug/plate seam,
+    // so a fingertip gets under the lid where it meets the bin's lip.
+    const round = wasm.Manifold.cylinder(LID_NOTCH_DEPTH_MM + 1, 1, 1, tess.circle, false);
+    const turned = round.rotate([-90, 0, 0]);
+    const shaped = turned.scale([LID_NOTCH_WIDTH_MM / 2, 1, LID_NOTCH_HEIGHT_MM / 2]);
+    cutters.push(shaped.translate((gridX * PITCH_MM) / 2, -1, BASE_PROFILE_HEIGHT_MM));
+    drop(round);
+    drop(turned);
+    drop(shaped);
+  }
+  solid = subtractAll(wasm, solid, cutters);
+  return solid;
+}
+
+export function buildLid(
+  wasm: ManifoldToplevel,
+  gridX: number,
+  gridY: number,
+  params: LidParams,
+  quality: Quality,
+): MeshPart[] {
+  const solid = buildLidSolid(wasm, gridX, gridY, params, quality);
+  try {
+    return [meshFromSolid(solid, `lid-${gridX}x${gridY}`)];
+  } finally {
+    drop(solid);
+  }
+}
+
 function plateCorners(
   piece: { originX: number; originY: number; width: number; depth: number },
   outerW: number,
@@ -1003,4 +1120,11 @@ export function buildBaseplate(
   }
 
   return parts;
+}
+
+/** Each part (baseplate, bin, lid) builds and exports on its own. */
+export function buildJob(wasm: ManifoldToplevel, job: GeometryJob, quality: Quality): MeshPart[] {
+  if (job.kind === "bin") return buildBin(wasm, job.params, quality);
+  if (job.kind === "lid") return buildLid(wasm, job.gridX, job.gridY, job.params, quality);
+  return buildBaseplate(wasm, job.params, quality);
 }

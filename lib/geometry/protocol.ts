@@ -1,4 +1,4 @@
-import type { BaseplateParams, BinParams } from "@/lib/params";
+import type { BaseplateParams, BinParams, LidParams } from "@/lib/params";
 
 /** "draft" is the coarse low-poly viewer mesh; "export" is what STL/3MF get. */
 export type Quality = "draft" | "preview" | "export";
@@ -15,7 +15,8 @@ export type MeshPart = {
 
 export type GeometryJob =
   | { kind: "bin"; params: BinParams }
-  | { kind: "baseplate"; params: BaseplateParams };
+  | { kind: "baseplate"; params: BaseplateParams }
+  | { kind: "lid"; gridX: number; gridY: number; params: LidParams };
 
 export type WorkerRequest = {
   id: number;
