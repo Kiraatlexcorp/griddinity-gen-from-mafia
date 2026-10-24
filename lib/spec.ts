@@ -22,6 +22,13 @@ export const BASE_PROFILE_INSET_MM = 2.95;
 export const STACKING_LIP_HEIGHT_MM = 4.4;
 export const STACKING_LIP_DEPTH_MM = 2.6;
 
+/** Solid layer between a lid's plug and its top sockets. */
+export const LID_PLATE_MM = 1.2;
+/** Finger notch on the lid's front edge, mm. */
+export const LID_NOTCH_WIDTH_MM = 24;
+export const LID_NOTCH_HEIGHT_MM = 7;
+export const LID_NOTCH_DEPTH_MM = 3;
+
 export const TAB_DEPTH_MM = 15.85;
 export const TAB_SUPPORT_HEIGHT_MM = 1.2;
 export const TAB_HEIGHT_MM =

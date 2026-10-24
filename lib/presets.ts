@@ -1,5 +1,6 @@
 import {
   DEFAULT_BIN,
+  DEFAULT_LID,
   DEFAULT_PLATE,
   DEFAULT_STATE,
   decodeState,
@@ -114,7 +115,8 @@ export function designKey(state: StudioState) {
   return encodeState({
     tab: state.tab,
     plate: state.tab === "baseplate" ? state.plate : DEFAULT_PLATE,
-    bin: state.tab === "bin" ? state.bin : DEFAULT_BIN,
+    bin: state.tab === "baseplate" ? DEFAULT_BIN : state.bin,
+    lid: state.tab === "lid" ? state.lid : DEFAULT_LID,
   });
 }
 

@@ -20,7 +20,7 @@ import {
 } from "@/lib/spec";
 import { cleanLabelText } from "@/lib/geometry/pixel-font";
 
-export type StudioTab = "baseplate" | "bin";
+export type StudioTab = "baseplate" | "bin" | "lid";
 export type LengthUnit = "mm" | "grid";
 export type LabelPosition = "none" | "left" | "center" | "right" | "full";
 
@@ -72,10 +72,17 @@ export type BinParams = {
   labelText: string;
 };
 
+/** The lid takes its width and depth from the bin, so the two always match. */
+export type LidParams = {
+  /** Finger notch on the front edge for lifting the lid off. */
+  notch: boolean;
+};
+
 export type StudioState = {
   tab: StudioTab;
   plate: BaseplateParams;
   bin: BinParams;
+  lid: LidParams;
 };
 
 export const DEFAULT_PLATE: BaseplateParams = {
@@ -113,10 +120,13 @@ export const DEFAULT_BIN: BinParams = {
   labelText: "",
 };
 
+export const DEFAULT_LID: LidParams = { notch: true };
+
 export const DEFAULT_STATE: StudioState = {
   tab: "baseplate",
   plate: DEFAULT_PLATE,
   bin: DEFAULT_BIN,
+  lid: DEFAULT_LID,
 };
 
 const EDGE_CODES: Record<PlateEdge, string> = {
@@ -209,7 +219,8 @@ function readElements(params: URLSearchParams): BinElement[] {
 
 export function decodeState(search: string): StudioState {
   const params = new URLSearchParams(search);
-  const tab = params.get("tab") === "bin" ? "bin" : "baseplate";
+  const tabRaw = params.get("tab");
+  const tab: StudioTab = tabRaw === "bin" || tabRaw === "lid" ? tabRaw : "baseplate";
   const unit = params.get("unit") === "grid" ? "grid" : "mm";
   const presetRaw = params.get("bedp");
   const bedPreset = BED_PRESETS.some((preset) => preset.id === presetRaw)
@@ -263,6 +274,9 @@ export function decodeState(search: string): StudioState {
       dividerHeight: limit("dividerHeight", params.get("dvh")),
       labelText: cleanLabelText(params.get("lt") ?? ""),
     },
+    lid: {
+      notch: bool(params.get("lnotch"), DEFAULT_LID.notch),
+    },
   };
 }
 
@@ -298,6 +312,7 @@ export function encodeState(state: StudioState): string {
   params.set("dvt", trim(state.bin.dividerWall));
   params.set("dvh", trim(state.bin.dividerHeight));
   if (state.bin.labelText) params.set("lt", state.bin.labelText);
+  params.set("lnotch", state.lid.notch ? "1" : "0");
   return params.toString();
 }
 
