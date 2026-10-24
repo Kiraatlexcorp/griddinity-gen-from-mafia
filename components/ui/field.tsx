@@ -133,7 +133,7 @@ function FieldDescription({ className, ...props }: React.ComponentProps<"p">) {
     <p
       data-slot="field-description"
       className={cn(
-        "w-full text-left text-xs leading-snug font-normal text-pretty text-muted-foreground [[data-variant=legend]+&]:-mt-1.5",
+        "w-full text-left text-xs leading-snug font-normal text-pretty ai-caption [[data-variant=legend]+&]:-mt-1.5",
         // Inside a Field (gap-2) pull up to a 4 px gap under the control.
         "[[data-slot=field]>&]:-mt-1",
         "[&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",

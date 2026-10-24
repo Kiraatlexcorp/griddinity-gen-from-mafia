@@ -147,3 +147,46 @@
     color: var(--primary-foreground);
   }
 }
+
+/* Captions: gradient from the primary CTA colour into lighter, hue-shifted neighbours,
+   tinted so it stays readable on the cards (dark #212121 / light #fafafa). */
+:root {
+  --ai-caption-a: color-mix(in oklab, var(--primary) 100%, black 0%);
+  --ai-caption-b: color-mix(in oklab, var(--primary-hover) 80%, #7a1fa2);
+  --ai-caption-c: color-mix(in oklab, var(--primary) 70%, #c2185b);
+}
+.dark {
+  --ai-caption-a: color-mix(in oklab, var(--primary) 30%, white);
+  --ai-caption-b: color-mix(in oklab, var(--primary-hover) 45%, #ffb3c7);
+  --ai-caption-c: color-mix(in oklab, var(--primary) 25%, #e9b8ff);
+}
+@layer components {
+  .ai-caption {
+    background-image: linear-gradient(
+      100deg,
+      var(--ai-caption-a) 0%,
+      var(--ai-caption-b) 35%,
+      var(--ai-caption-c) 65%,
+      var(--ai-caption-a) 100%
+    );
+    background-size: 200% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation: ai-caption-shimmer 6s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ai-caption {
+      animation: none;
+    }
+  }
+}
+@keyframes ai-caption-shimmer {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: -200% 50%;
+  }
+}
