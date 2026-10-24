@@ -16,7 +16,7 @@ export type MeshPart = {
 export type GeometryJob =
   | { kind: "bin"; params: BinParams }
   | { kind: "baseplate"; params: BaseplateParams }
-  | { kind: "lid"; gridX: number; gridY: number; params: LidParams };
+  | { kind: "lid"; gridX: number; gridY: number; half?: boolean; params: LidParams };
 
 export type WorkerRequest = {
   id: number;

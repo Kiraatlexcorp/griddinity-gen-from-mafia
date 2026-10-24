@@ -94,7 +94,7 @@ export function Studio() {
     state.tab === "bin"
       ? { kind: "bin", params: state.bin }
       : state.tab === "lid"
-        ? { kind: "lid", gridX: state.bin.gridX, gridY: state.bin.gridY, params: state.lid }
+        ? { kind: "lid", gridX: state.bin.gridX, gridY: state.bin.gridY, half: state.bin.half, params: state.lid }
         : { kind: "baseplate", params: state.plate };
   const { parts, status, ms, error, exportMesh } = useGeometry(
     job,

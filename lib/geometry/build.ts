@@ -37,6 +37,7 @@ import {
   MAGNET_HOLE_DEPTH_MM,
   MAGNET_HOLE_RADIUS_MM,
   PITCH_MM,
+  cellPitch,
   PLATE_CORNER_RADIUS_MM,
   SCREW_HOLE_RADIUS_MM,
   SOCKET_CLEARANCE_MM,
@@ -146,9 +147,10 @@ function baseProfile(
   zBase: number,
   clearance: number,
   segments: number,
+  top = BASE_TOP_MM,
 ): Manifold {
   const slabs = BASE_STATIONS.map((station, index) => {
-    const size = BASE_TOP_MM + clearance * 2 - station.inset * 2;
+    const size = top + clearance * 2 - station.inset * 2;
     const x = left - clearance + station.inset;
     const y = bottom - clearance + station.inset;
     const atTop = index === BASE_STATIONS.length - 1;
@@ -235,17 +237,22 @@ export function buildBinSolid(
   }
 
   const corner = radii(BASE_TOP_RADIUS_MM);
+  const pitch = cellPitch(params.half);
+  const padTop = pitch - CELL_INSET_MM * 2;
+  const cellsX = Math.round((params.gridX * PITCH_MM) / pitch);
+  const cellsY = Math.round((params.gridY * PITCH_MM) / pitch);
   const bases: Manifold[] = [];
-  for (let ix = 0; ix < params.gridX; ix += 1) {
-    for (let iy = 0; iy < params.gridY; iy += 1) {
+  for (let ix = 0; ix < cellsX; ix += 1) {
+    for (let iy = 0; iy < cellsY; iy += 1) {
       bases.push(
         baseProfile(
           wasm,
-          ix * PITCH_MM + CELL_INSET_MM,
-          iy * PITCH_MM + CELL_INSET_MM,
+          ix * pitch + CELL_INSET_MM,
+          iy * pitch + CELL_INSET_MM,
           0,
           0,
           tess.corner,
+          padTop,
         ),
       );
     }
@@ -284,14 +291,15 @@ export function buildBinSolid(
   }
 
   if (params.lite) {
-    for (let ix = 0; ix < params.gridX; ix += 1) {
-      for (let iy = 0; iy < params.gridY; iy += 1) {
-        const centerX = ix * PITCH_MM + PITCH_MM / 2;
-        const centerY = iy * PITCH_MM + PITCH_MM / 2;
+    const lite = (16 * pitch) / PITCH_MM;
+    for (let ix = 0; ix < cellsX; ix += 1) {
+      for (let iy = 0; iy < cellsY; iy += 1) {
+        const centerX = ix * pitch + pitch / 2;
+        const centerY = iy * pitch + pitch / 2;
         cutters.push(
-          wasm.Manifold.cube([16, 16, BASE_PROFILE_HEIGHT_MM - 0.8], false).translate(
-            centerX - 8,
-            centerY - 8,
+          wasm.Manifold.cube([lite, lite, BASE_PROFILE_HEIGHT_MM - 0.8], false).translate(
+            centerX - lite / 2,
+            centerY - lite / 2,
             0.8,
           ),
         );
@@ -299,9 +307,13 @@ export function buildBinSolid(
     }
   }
 
+  // Magnets and screws sit on whole 42 mm cells only; half pads are too small
+  // for two 6.5 mm holes 8 mm in from each edge.
+  const wholeX = Math.floor(params.gridX + 1e-9);
+  const wholeY = Math.floor(params.gridY + 1e-9);
   const holes: Manifold[] = [];
-  for (let ix = 0; ix < params.gridX; ix += 1) {
-    for (let iy = 0; iy < params.gridY; iy += 1) {
+  for (let ix = 0; ix < wholeX; ix += 1) {
+    for (let iy = 0; iy < wholeY; iy += 1) {
       const xs = [
         ix * PITCH_MM + HOLE_FROM_CELL_EDGE_MM,
         ix * PITCH_MM + PITCH_MM - HOLE_FROM_CELL_EDGE_MM,
@@ -314,8 +326,8 @@ export function buildBinSolid(
         for (const [ey, y] of ys.entries()) {
           // Corner: only the hole nearest each outer corner of the whole bin.
           const outerCorner =
-            (ex === 0 ? ix === 0 : ix === params.gridX - 1) &&
-            (ey === 0 ? iy === 0 : iy === params.gridY - 1);
+            (ex === 0 ? ix === 0 : ix === wholeX - 1) &&
+            (ey === 0 ? iy === 0 : iy === wholeY - 1);
           const wants = (pattern: HolePattern) =>
             pattern === "full" || (pattern === "corner" && outerCorner);
           if (wants(params.magnets)) {
@@ -770,10 +782,14 @@ export function buildLidSolid(
   gridY: number,
   params: LidParams,
   quality: Quality,
+  half = false,
 ): Manifold {
   const tess = tessellation(quality);
   wasm.setCircularSegments(tess.circle);
   const footprint = binFootprint(gridX, gridY);
+  const pitch = cellPitch(half);
+  const cellsX = Math.round((gridX * PITCH_MM) / pitch);
+  const cellsY = Math.round((gridY * PITCH_MM) / pitch);
   const plug = footprintPlug(wasm, footprint.width, footprint.depth, tess.corner);
   const socketFloorZ = BASE_PROFILE_HEIGHT_MM + LID_PLATE_MM;
   // The top is full pitch like a baseplate so every socket gets the standard
@@ -793,16 +809,17 @@ export function buildLidSolid(
   drop(plug);
   drop(top);
   const cutters: Manifold[] = [];
-  for (let ix = 0; ix < gridX; ix += 1) {
-    for (let iy = 0; iy < gridY; iy += 1) {
+  for (let ix = 0; ix < cellsX; ix += 1) {
+    for (let iy = 0; iy < cellsY; iy += 1) {
       cutters.push(
         socketCutter(
           wasm,
-          ix * PITCH_MM + CELL_INSET_MM,
-          iy * PITCH_MM + CELL_INSET_MM,
+          ix * pitch + CELL_INSET_MM,
+          iy * pitch + CELL_INSET_MM,
           socketFloorZ,
           true,
           tess,
+          pitch - CELL_INSET_MM * 2,
         ),
       );
     }
@@ -828,8 +845,9 @@ export function buildLid(
   gridY: number,
   params: LidParams,
   quality: Quality,
+  half = false,
 ): MeshPart[] {
-  const solid = buildLidSolid(wasm, gridX, gridY, params, quality);
+  const solid = buildLidSolid(wasm, gridX, gridY, params, quality, half);
   try {
     return [meshFromSolid(solid, `lid-${gridX}x${gridY}`)];
   } finally {
@@ -869,6 +887,7 @@ function socketCutter(
   socketFloorZ: number,
   floorOn: boolean,
   tess: Tessellation,
+  top = BASE_TOP_MM,
 ): Manifold {
   const profile = baseProfile(
     wasm,
@@ -877,13 +896,14 @@ function socketCutter(
     socketFloorZ,
     SOCKET_CLEARANCE_MM,
     tess.corner,
+    top,
   );
   const opener = extrude(
     wasm,
     baseLeft - SOCKET_CLEARANCE_MM,
     baseBottom - SOCKET_CLEARANCE_MM,
-    BASE_TOP_MM + SOCKET_CLEARANCE_MM * 2,
-    BASE_TOP_MM + SOCKET_CLEARANCE_MM * 2,
+    top + SOCKET_CLEARANCE_MM * 2,
+    top + SOCKET_CLEARANCE_MM * 2,
     radii(BASE_TOP_RADIUS_MM + SOCKET_CLEARANCE_MM),
     socketFloorZ + BASE_PROFILE_HEIGHT_MM - 0.05,
     1.2,
@@ -897,8 +917,8 @@ function socketCutter(
         wasm,
         baseLeft - SOCKET_CLEARANCE_MM + bottom.inset,
         baseBottom - SOCKET_CLEARANCE_MM + bottom.inset,
-        BASE_TOP_MM + SOCKET_CLEARANCE_MM * 2 - bottom.inset * 2,
-        BASE_TOP_MM + SOCKET_CLEARANCE_MM * 2 - bottom.inset * 2,
+        top + SOCKET_CLEARANCE_MM * 2 - bottom.inset * 2,
+        top + SOCKET_CLEARANCE_MM * 2 - bottom.inset * 2,
         radii(bottom.radius + SOCKET_CLEARANCE_MM),
         socketFloorZ - 1,
         1.05,
@@ -954,6 +974,10 @@ export function buildBaseplate(
   const totalH = socketFloorZ + SOCKET_DEPTH_MM;
   const connectors = params.connectors ?? "none";
   const edges = params.edges ?? [];
+  const pitch = plan.pitch;
+  const padTop = pitch - CELL_INSET_MM * 2;
+  // Holes and weight pockets need a full 42 mm cell.
+  const fullCells = pitch === PITCH_MM;
   const parts: MeshPart[] = [];
   let clipsNeeded = 0;
 
@@ -975,8 +999,8 @@ export function buildBaseplate(
 
     for (let ix = 0; ix < piece.cellsX; ix += 1) {
       for (let iy = 0; iy < piece.cellsY; iy += 1) {
-        const cellX = piece.marginLeft + ix * PITCH_MM;
-        const cellY = piece.marginBottom + iy * PITCH_MM;
+        const cellX = piece.marginLeft + ix * pitch;
+        const cellY = piece.marginBottom + iy * pitch;
         sockets.push(
           socketCutter(
             wasm,
@@ -985,8 +1009,10 @@ export function buildBaseplate(
             socketFloorZ,
             floorOn,
             tess,
+            padTop,
           ),
         );
+        if (!fullCells) continue;
 
         const centers = [
           cellX + HOLE_FROM_CELL_EDGE_MM,
@@ -1086,12 +1112,12 @@ export function buildBaseplate(
       }
       tabs.push(prism(wasm, tabOutline(site), 0, totalH));
       const offset = site.neighbourMargin + CELL_INSET_MM;
-      for (const shift of [-PITCH_MM, 0]) {
+      for (const shift of [-pitch, 0]) {
         const along = site.along + shift + CELL_INSET_MM;
         cuts.push(
           site.edge === "right"
-            ? socketCutter(wasm, site.at + offset, along, socketFloorZ, floorOn, tess)
-            : socketCutter(wasm, along, site.at + offset, socketFloorZ, floorOn, tess),
+            ? socketCutter(wasm, site.at + offset, along, socketFloorZ, floorOn, tess, padTop)
+            : socketCutter(wasm, along, site.at + offset, socketFloorZ, floorOn, tess, padTop),
         );
       }
     }
@@ -1125,6 +1151,6 @@ export function buildBaseplate(
 /** Each part (baseplate, bin, lid) builds and exports on its own. */
 export function buildJob(wasm: ManifoldToplevel, job: GeometryJob, quality: Quality): MeshPart[] {
   if (job.kind === "bin") return buildBin(wasm, job.params, quality);
-  if (job.kind === "lid") return buildLid(wasm, job.gridX, job.gridY, job.params, quality);
+  if (job.kind === "lid") return buildLid(wasm, job.gridX, job.gridY, job.params, quality, job.half);
   return buildBaseplate(wasm, job.params, quality);
 }
