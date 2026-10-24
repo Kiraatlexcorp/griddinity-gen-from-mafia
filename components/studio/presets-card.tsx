@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { Box, Check, ChevronDown, Grid3x3, PanelTop, Save, Trash2 } from "lucide-react";
+import { Box, Check, ChevronDown, Grid3x3, PanelTop, RotateCcw, Save, SlidersHorizontal, Trash2 } from "lucide-react";
 import { SectionCard } from "@/components/studio/section-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { decodeState, encodeState, type StudioState } from "@/lib/params";
 import {
   designKey,
@@ -64,15 +65,22 @@ export function PresetsCard({
   state,
   picked,
   onLoad,
+  onCustom,
+  onReset,
 }: {
   state: StudioState;
   picked: PickedPreset | null;
   onLoad: (state: StudioState, picked: PickedPreset) => void;
+  /** Keep the current values, forget the preset. */
+  onCustom?: () => void;
+  /** Default params for the open tab, no preset, bare URL. */
+  onReset?: () => void;
 }) {
   const stored = useSyncExternalStore(subscribe, snapshot, () => EMPTY);
   const saved = SHOW_SAVED_DESIGNS ? stored : EMPTY;
   const [name, setName] = useState("");
   const selection = presetSelection(state, picked, saved);
+  const custom = !selection || selection.edited;
   const selectedPack = selection?.picked.source === "pack" ? selection.picked.id : null;
   const selectedSaved = selection?.picked.source === "saved" ? selection.picked.id : null;
   const TriggerIcon = state.tab === "bin" ? Box : state.tab === "lid" ? PanelTop : Grid3x3;
@@ -104,11 +112,22 @@ export function PresetsCard({
 
   return (
     <SectionCard id="presets" title="Presets">
+      <div className="flex items-center gap-1.5">
       <DropdownMenu onOpenChange={(open) => open && scrollToPicked()}>
         <DropdownMenuTrigger
           render={
-            <Button variant="outline" className="w-full justify-between gap-2">
-              {selection ? (
+            <Button variant="outline" className="min-w-0 flex-1 justify-between gap-2">
+              {custom ? (
+                <span className="flex min-w-0 items-center gap-2">
+                  <SlidersHorizontal data-icon="inline-start" />
+                  <span className="truncate">Custom</span>
+                  {selection ? (
+                    <span className="truncate text-xs font-normal text-muted-foreground">
+                      from {selection.picked.name}
+                    </span>
+                  ) : null}
+                </span>
+              ) : selection ? (
                 <span className="flex min-w-0 items-center gap-2">
                   <TriggerIcon data-icon="inline-start" />
                   <span className="truncate">{selection.picked.name}</span>
@@ -128,9 +147,23 @@ export function PresetsCard({
           data-presets-menu=""
           className="max-h-[min(var(--available-height),32rem)] w-(--anchor-width) min-w-72 touch-pan-y overscroll-contain"
         >
-          {PRESET_GROUPS.map((group, index) => (
+          <DropdownMenuGroup>
+            <DropdownMenuItem
+              className="items-start"
+              aria-current={custom ? "true" : undefined}
+              onClick={onCustom}
+            >
+              <SlidersHorizontal className="mt-0.5" />
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="font-medium">Custom</span>
+                <span className="text-xs text-muted-foreground">No preset, your own values</span>
+              </span>
+              {custom ? <Check aria-label="Selected" className="mt-0.5 text-highlight" /> : null}
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+          {PRESET_GROUPS.map((group) => (
             <DropdownMenuGroup key={group.id}>
-              {index > 0 ? <DropdownMenuSeparator /> : null}
+              <DropdownMenuSeparator />
               <DropdownMenuLabel>{group.label}</DropdownMenuLabel>
               {PRESETS.filter((preset) => preset.group === group.id).map((preset) => {
                 const Icon = preset.state.tab === "bin" ? Box : Grid3x3;
@@ -156,6 +189,17 @@ export function PresetsCard({
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button variant="ghost" size="icon" aria-label="Reset to defaults" onClick={onReset}>
+              <RotateCcw />
+            </Button>
+          }
+        />
+        <TooltipContent>Reset to defaults</TooltipContent>
+      </Tooltip>
+      </div>
 
       {SHOW_SAVED_DESIGNS ? (
         <>

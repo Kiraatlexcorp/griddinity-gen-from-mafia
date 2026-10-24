@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
+import { InfoTip } from "@/components/studio/info-tip";
 import { formatMm } from "@/lib/params";
-import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -16,6 +17,7 @@ export function SwitchField({
   id,
   label,
   hint,
+  warning,
   checked,
   disabled,
   onChange,
@@ -23,6 +25,8 @@ export function SwitchField({
   id: string;
   label: string;
   hint?: string;
+  /** Stays visible inline, unlike the hint. */
+  warning?: string;
   checked: boolean;
   disabled?: boolean;
   onChange: (checked: boolean) => void;
@@ -30,11 +34,15 @@ export function SwitchField({
   return (
     <Field orientation="horizontal" data-disabled={disabled || undefined}>
       <FieldContent>
-        <FieldLabel htmlFor={id}>{label}</FieldLabel>
-        {hint ? <FieldDescription>{hint}</FieldDescription> : null}
+        <div className="flex items-center">
+          <FieldLabel htmlFor={id}>{label}</FieldLabel>
+          {hint ? <InfoTip id={`${id}-hint`} label={label} text={hint} /> : null}
+        </div>
+        <FieldWarning text={warning} />
       </FieldContent>
       <Switch
         id={id}
+        aria-describedby={hint ? `${id}-hint` : undefined}
         checked={checked}
         disabled={disabled}
         onCheckedChange={(next) => onChange(next)}
@@ -56,10 +64,14 @@ export function SelectField<T extends string>({
   options: { value: T; label: string }[];
   onChange: (value: T) => void;
 }) {
+  const hintId = useId();
   return (
     <Field className="gap-1">
       <div data-slot="tune-row" className="tune-row">
-      <FieldLabel className="tune-row-label">{label}</FieldLabel>
+      <span className="flex items-center">
+        <FieldLabel className="tune-row-label">{label}</FieldLabel>
+        {hint ? <InfoTip id={hintId} label={label} text={hint} /> : null}
+      </span>
       <Select
         items={options}
         value={value}
@@ -67,7 +79,7 @@ export function SelectField<T extends string>({
           if (next != null) onChange(next as T);
         }}
       >
-        <SelectTrigger size="sm" className="tune-select">
+        <SelectTrigger size="sm" className="tune-select" aria-describedby={hint ? hintId : undefined}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -79,7 +91,6 @@ export function SelectField<T extends string>({
         </SelectContent>
       </Select>
       </div>
-      {hint ? <FieldDescription>{hint}</FieldDescription> : null}
     </Field>
   );
 }
@@ -116,6 +127,7 @@ export function MeasureField({
   const drag = useRef<{ x: number; v: number } | null>(null);
   const text = focused ? override : printed;
   const unit = suffix.toLowerCase();
+  const hintId = useId();
 
   function commit(next: number) {
     if (!Number.isFinite(next)) return;
@@ -157,7 +169,9 @@ export function MeasureField({
         >
           {label}
         </span>
+        {hint ? <InfoTip id={hintId} label={label} text={hint} /> : null}
         <input
+          aria-describedby={hint ? hintId : undefined}
           className="tune-field-input"
           inputMode="decimal"
           aria-label={`${label} value`}
@@ -181,7 +195,16 @@ export function MeasureField({
         />
         {unit ? <span className="tune-field-unit">{unit}</span> : null}
       </label>
-      {hint ? <FieldDescription>{hint}</FieldDescription> : null}
     </Field>
+  );
+}
+
+/** Inline warning under a control; hints go behind the info icon instead. */
+export function FieldWarning({ text }: { text?: string }) {
+  if (!text) return null;
+  return (
+    <p role="note" className="field-warning">
+      {text}
+    </p>
   );
 }
