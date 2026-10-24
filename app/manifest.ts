@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Gridfinity Studio by ACMEE",
-    short_name: "ACMEE Gridfinity",
+    name: "Gridfinity Studio by ACMIE",
+    short_name: "ACMIE Gridfinity",
     description: "Generate Gridfinity bins and baseplates in the browser and export STL or 3MF.",
     start_url: "/",
     display: "standalone",

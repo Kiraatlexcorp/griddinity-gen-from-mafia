@@ -16,10 +16,10 @@ const hubot = Hubot_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Gridfinity Studio by ACMEE",
-  applicationName: "Gridfinity Studio by ACMEE",
+  title: "Gridfinity Studio by ACMIE",
+  applicationName: "Gridfinity Studio by ACMIE",
   description:
-    "Gridfinity Studio by ACMEE: generate Gridfinity bins, baseplates and frame-only grids with puzzle or clip connectors in the browser. Download STL or a Bambu-ready 3MF.",
+    "Gridfinity Studio by ACMIE: generate Gridfinity bins, baseplates and frame-only grids with puzzle or clip connectors in the browser. Download STL or a Bambu-ready 3MF.",
 };
 
 export const viewport = {
