@@ -30,7 +30,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsIndicator, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { download3mf, downloadStls } from "@/lib/export/download";
-import { binFootprint, binHeight, planBaseplate } from "@/lib/fit";
+import { binFootprint, binHeight, planBaseplate, planBinSplit } from "@/lib/fit";
 import {
   decodeState,
   encodeState,
@@ -92,9 +92,9 @@ export function Studio() {
   const [previewQuality, setPreviewQuality] = usePreviewQuality();
   const job: GeometryJob =
     state.tab === "bin"
-      ? { kind: "bin", params: state.bin }
+      ? { kind: "bin", params: state.bin, bed: state.plate.bed }
       : state.tab === "lid"
-        ? { kind: "lid", gridX: state.bin.gridX, gridY: state.bin.gridY, half: state.bin.half, params: state.lid }
+        ? { kind: "lid", gridX: state.bin.gridX, gridY: state.bin.gridY, half: state.bin.half, bed: state.plate.bed, params: state.lid }
         : { kind: "baseplate", params: state.plate };
   const { parts, status, ms, error, exportMesh } = useGeometry(
     job,
@@ -156,6 +156,7 @@ export function Studio() {
   const lidW = state.bin.gridX * PITCH_MM;
   const lidD = state.bin.gridY * PITCH_MM;
   const lidOversize = lidW > state.plate.bed || lidD > state.plate.bed;
+  const binSplit = planBinSplit(state.bin.gridX, state.bin.gridY, state.bin.half, state.plate.bed);
   const lidStats: Stat[] = [
     {
       label: "Outer size",
@@ -180,9 +181,9 @@ export function Studio() {
     },
     {
       label: "Bed fit",
-      value: lidOversize ? "Too wide" : "Fits",
+      value: lidOversize ? `${binSplit.pieces} pieces` : "Fits",
       badge: `${formatMm(state.plate.bed)} mm bed`,
-      note: lidOversize ? "Overhangs the bed" : "on one bed",
+      note: lidOversize ? "Split on cell lines" : "on one bed",
       hint: "Prints plug side down",
     },
   ];
@@ -247,9 +248,9 @@ export function Studio() {
           },
           {
             label: "Bed fit",
-            value: oversize ? "Too wide" : "Fits",
+            value: oversize ? `${binSplit.pieces} pieces` : "Fits",
             badge: `${formatMm(state.plate.bed)} mm bed`,
-            note: oversize ? "Overhangs the bed" : "on one bed",
+            note: oversize ? "Split on cell lines" : "on one bed",
             hint: `Magnets ${state.bin.magnets}, screws ${state.bin.screws}`,
           },
         ];

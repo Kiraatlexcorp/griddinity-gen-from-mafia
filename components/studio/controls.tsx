@@ -28,6 +28,7 @@ import {
   labelTabFits,
   planBaseplate,
   planDrawer,
+  planBinSplit,
 } from "@/lib/fit";
 import {
   formatMm,
@@ -497,6 +498,7 @@ export function BinControls({
     );
   }
   const oversize = foot.width > bed || foot.depth > bed;
+  const split = planBinSplit(bin.gridX, bin.gridY, bin.half, bed);
   const dividersX = fitDividers(innerW, bin.dividerWall, bin.dividersX);
   const dividersY = fitDividers(innerD, bin.dividerWall, bin.dividersY);
   const capped = dividersX.count < bin.dividersX || dividersY.count < bin.dividersY;
@@ -522,11 +524,12 @@ export function BinControls({
 
         {oversize ? (
           <Alert>
-            <AlertTitle>Wider than the bed</AlertTitle>
+            <AlertTitle>Splits into {split.pieces} pieces</AlertTitle>
             <AlertDescription>
-              This bin is {formatMm(foot.width)} × {formatMm(foot.depth)} mm.
-              The bed is {formatMm(bed)} mm, so the slicer will hang it off the
-              plate.
+              This bin is {formatMm(foot.width)} × {formatMm(foot.depth)} mm, more than the{" "}
+              {formatMm(bed)} mm bed. It is cut on cell lines, {split.columns.join(" + ")} cells across and{" "}
+              {split.rows.join(" + ")} deep, each piece on its own plate in the 3MF. Glue the seams
+              after printing.
             </AlertDescription>
           </Alert>
         ) : null}
