@@ -364,6 +364,17 @@ export function PlateControls({
             checked={plate.floor}
             onChange={(floor) => patch({ floor })}
           />
+          <SwitchField
+            id="plate-half"
+            label="Half-grid sockets"
+            hint={
+              plate.half
+                ? "21 mm sockets take half-grid bins and whole bins alike. Magnets, screws and weights are off at this pitch."
+                : "Switch to 21 mm sockets for half-grid bins."
+            }
+            checked={plate.half ?? false}
+            onChange={(half) => patch({ half })}
+          />
           <SelectField<ConnectorKind>
             label="Connectors"
             hint={
@@ -528,26 +539,42 @@ export function BinControls({
         ) : null}
 
         <FieldGroup className="gap-4">
+          <Choice
+            label="Grid"
+            hint="Half-grid puts a 21 mm pad under every half cell, so sizes go in 0.5 steps. Magnets and screws stay on whole 42 mm cells."
+            value={bin.half ? "half" : "full"}
+            options={[
+              { value: "full", label: "42 mm" },
+              { value: "half", label: "Half 21 mm" },
+            ]}
+            onChange={(value) =>
+              patch(
+                value === "half"
+                  ? { half: true }
+                  : { half: false, gridX: Math.max(1, Math.round(bin.gridX)), gridY: Math.max(1, Math.round(bin.gridY)) },
+              )
+            }
+          />
           <div className="grid grid-cols-2 gap-2">
             <MeasureField
               label="Width"
               suffix="CELLS"
               value={bin.gridX}
-              min={1}
+              min={bin.half ? 0.5 : 1}
               max={12}
-              step={1}
-              digits={0}
-              onChange={(gridX) => patch({ gridX: Math.round(gridX) })}
+              step={bin.half ? 0.5 : 1}
+              digits={bin.half ? 1 : 0}
+              onChange={(gridX) => patch({ gridX: snapUnits(gridX, bin.half) })}
             />
             <MeasureField
               label="Depth"
               suffix="CELLS"
               value={bin.gridY}
-              min={1}
+              min={bin.half ? 0.5 : 1}
               max={12}
-              step={1}
-              digits={0}
-              onChange={(gridY) => patch({ gridY: Math.round(gridY) })}
+              step={bin.half ? 0.5 : 1}
+              digits={bin.half ? 1 : 0}
+              onChange={(gridY) => patch({ gridY: snapUnits(gridY, bin.half) })}
             />
             <MeasureField
               label="Height"
@@ -774,21 +801,21 @@ export function LidControls({
               label="Width"
               suffix="CELLS"
               value={bin.gridX}
-              min={1}
+              min={bin.half ? 0.5 : 1}
               max={12}
-              step={1}
-              digits={0}
-              onChange={(gridX) => onBinChange({ ...bin, gridX: Math.round(gridX) })}
+              step={bin.half ? 0.5 : 1}
+              digits={bin.half ? 1 : 0}
+              onChange={(gridX) => onBinChange({ ...bin, gridX: snapUnits(gridX, bin.half) })}
             />
             <MeasureField
               label="Depth"
               suffix="CELLS"
               value={bin.gridY}
-              min={1}
+              min={bin.half ? 0.5 : 1}
               max={12}
-              step={1}
-              digits={0}
-              onChange={(gridY) => onBinChange({ ...bin, gridY: Math.round(gridY) })}
+              step={bin.half ? 0.5 : 1}
+              digits={bin.half ? 1 : 0}
+              onChange={(gridY) => onBinChange({ ...bin, gridY: snapUnits(gridY, bin.half) })}
             />
           </div>
           <SwitchField
@@ -802,4 +829,8 @@ export function LidControls({
       </SectionCard>
     </div>
   );
+}
+
+function snapUnits(value: number, half: boolean | undefined) {
+  return half ? Math.max(0.5, Math.round(value * 2) / 2) : Math.max(1, Math.round(value));
 }
