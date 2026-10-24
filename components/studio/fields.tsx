@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Slider } from "@/components/ui/slider";
+import { useRef, useState } from "react";
 import { formatMm } from "@/lib/params";
 import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
 import {
@@ -59,8 +57,9 @@ export function SelectField<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <Field>
-      <FieldLabel>{label}</FieldLabel>
+    <Field className="gap-1">
+      <div data-slot="tune-row" className="tune-row">
+      <FieldLabel className="tune-row-label">{label}</FieldLabel>
       <Select
         items={options}
         value={value}
@@ -68,7 +67,7 @@ export function SelectField<T extends string>({
           if (next != null) onChange(next as T);
         }}
       >
-        <SelectTrigger className="w-full">
+        <SelectTrigger size="sm" className="tune-select">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -79,15 +78,17 @@ export function SelectField<T extends string>({
           ))}
         </SelectContent>
       </Select>
+      </div>
       {hint ? <FieldDescription>{hint}</FieldDescription> : null}
     </Field>
   );
 }
 
-function firstNumber(value: number | readonly number[]) {
-  return typeof value === "number" ? value : value[0];
-}
-
+/**
+ * Fine-tune number field (beautifului.dev FineTuneCard ScrubField): an inset filled
+ * box with a muted inline label prefix and unit suffix. Drag the label to scrub,
+ * use the arrow keys on it (Shift for x10), or type in the value.
+ */
 export function MeasureField({
   label,
   hint,
@@ -112,40 +113,54 @@ export function MeasureField({
   const printed = digits === 0 ? String(Math.round(value)) : formatMm(value);
   const [focused, setFocused] = useState(false);
   const [override, setOverride] = useState(printed);
+  const drag = useRef<{ x: number; v: number } | null>(null);
   const text = focused ? override : printed;
+  const unit = suffix.toLowerCase();
 
   function commit(next: number) {
     if (!Number.isFinite(next)) return;
-    onChange(Math.min(max, Math.max(min, next)));
+    const snapped = Math.round(next / step) * step;
+    onChange(Math.min(max, Math.max(min, Number(snapped.toFixed(4)))));
   }
 
   return (
-    <Field>
-      <div className="flex items-baseline justify-between gap-3">
-        <FieldLabel>{label}</FieldLabel>
-        <span className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground">
-          {suffix}
-        </span>
-      </div>
-      <div className="flex items-center gap-3">
-        <Slider
-          className="min-w-0 flex-1"
-          min={min}
-          max={max}
-          step={step}
-          value={[value]}
-          onValueChange={(next) => {
-            const picked = firstNumber(next);
-            if (picked != null) commit(picked);
+    <Field className="gap-1">
+      <label data-slot="tune-field" className="tune-field">
+        <span
+          role="slider"
+          aria-label={label}
+          aria-valuenow={value}
+          aria-valuemin={min}
+          aria-valuemax={max}
+          tabIndex={0}
+          className="tune-field-label"
+          onPointerDown={(event) => {
+            (event.target as HTMLElement).setPointerCapture(event.pointerId);
+            drag.current = { x: event.clientX, v: value };
           }}
-        />
-        <Input
-          className="w-[4.75rem] text-right font-mono tabular-nums"
+          onPointerMove={(event) => {
+            if (!drag.current) return;
+            commit(drag.current.v + ((event.clientX - drag.current.x) / 2) * step);
+          }}
+          onPointerUp={() => (drag.current = null)}
+          onPointerCancel={() => (drag.current = null)}
+          onKeyDown={(event) => {
+            const mult = event.shiftKey ? 10 : 1;
+            if (event.key === "ArrowUp" || event.key === "ArrowRight") {
+              event.preventDefault();
+              commit(value + step * mult);
+            } else if (event.key === "ArrowDown" || event.key === "ArrowLeft") {
+              event.preventDefault();
+              commit(value - step * mult);
+            }
+          }}
+        >
+          {label}
+        </span>
+        <input
+          className="tune-field-input"
           inputMode="decimal"
-          type="number"
-          min={min}
-          max={max}
-          step={step}
+          aria-label={`${label} value`}
           value={text}
           onFocus={() => {
             setOverride(printed);
@@ -154,17 +169,19 @@ export function MeasureField({
           onChange={(event) => {
             setOverride(event.target.value);
             const parsed = Number(event.target.value);
-            if (event.target.value.trim() !== "" && Number.isFinite(parsed)) commit(parsed);
+            if (event.target.value.trim() !== "" && Number.isFinite(parsed)) {
+              onChange(Math.min(max, Math.max(min, parsed)));
+            }
           }}
           onBlur={() => {
             const parsed = Number(override);
             setFocused(false);
-            if (Number.isFinite(parsed)) commit(parsed);
+            if (override.trim() !== "" && Number.isFinite(parsed)) onChange(Math.min(max, Math.max(min, parsed)));
           }}
         />
-      </div>
+        {unit ? <span className="tune-field-unit">{unit}</span> : null}
+      </label>
       {hint ? <FieldDescription>{hint}</FieldDescription> : null}
     </Field>
   );
 }
-
