@@ -30,10 +30,13 @@ export const STACKING_LIP_DEPTH_MM = 2.6;
 
 /** Solid layer between a lid's plug and its top sockets. */
 export const LID_PLATE_MM = 1.2;
-/** Finger notch on the lid's front edge, mm. */
-export const LID_NOTCH_WIDTH_MM = 24;
-export const LID_NOTCH_HEIGHT_MM = 7;
-export const LID_NOTCH_DEPTH_MM = 3;
+/** Lid grip, mm. Square through-cuts at the top centre, chamfered both sides. */
+export const LID_HOLE_MM = 20;
+export const LID_POCKET_MM = 24;
+export const LID_GRIP_CHAMFER_MM = 1;
+/** Bar across the handle pocket; its top sits flush with the socket floor. */
+export const LID_BAR_WIDTH_MM = 6;
+export const LID_BAR_THICKNESS_MM = 2;
 
 export const TAB_DEPTH_MM = 15.85;
 export const TAB_SUPPORT_HEIGHT_MM = 1.2;

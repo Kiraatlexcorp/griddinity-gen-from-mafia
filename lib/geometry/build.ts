@@ -32,9 +32,11 @@ import {
   DOVETAIL_HEAD_MM,
   PUZZLE_DEPTH_MM,
   HOLE_FROM_CELL_EDGE_MM,
-  LID_NOTCH_DEPTH_MM,
-  LID_NOTCH_HEIGHT_MM,
-  LID_NOTCH_WIDTH_MM,
+  LID_BAR_THICKNESS_MM,
+  LID_BAR_WIDTH_MM,
+  LID_GRIP_CHAMFER_MM,
+  LID_HOLE_MM,
+  LID_POCKET_MM,
   LID_PLATE_MM,
   MAGNET_HOLE_DEPTH_MM,
   MAGNET_HOLE_RADIUS_MM,
@@ -877,19 +879,46 @@ export function buildLidSolid(
       );
     }
   }
-  if (params.notch) {
-    // Elliptical scallop in the front edge, centred on the plug/plate seam,
-    // so a fingertip gets under the lid where it meets the bin's lip.
-    const round = wasm.Manifold.cylinder(LID_NOTCH_DEPTH_MM + 1, 1, 1, tess.circle, false);
-    const turned = round.rotate([-90, 0, 0]);
-    const shaped = turned.scale([LID_NOTCH_WIDTH_MM / 2, 1, LID_NOTCH_HEIGHT_MM / 2]);
-    cutters.push(shaped.translate((gridX * PITCH_MM) / 2, -1, BASE_PROFILE_HEIGHT_MM));
-    drop(round);
-    drop(turned);
-    drop(shaped);
+  const centerX = (gridX * PITCH_MM) / 2;
+  const centerY = (gridY * PITCH_MM) / 2;
+  const gripSize = params.grip === "hole" ? LID_HOLE_MM : LID_POCKET_MM;
+  if (params.grip !== "none") {
+    // Square through-cut the full height (it also clears any socket rim that
+    // crosses the centre), chamfered top and bottom.
+    cutters.push(chamferedSquareCut(wasm, centerX, centerY, gripSize, lidHeight()));
   }
   solid = subtractAll(wasm, solid, cutters);
+  if (params.grip === "handle") {
+    // Bar across the pocket, its top flush with the socket floor, so nothing
+    // rises into a socket and bins still stack on the lid.
+    const length = LID_POCKET_MM + LID_GRIP_CHAMFER_MM * 2 + 2;
+    const bar = wasm.Manifold.cube([length, LID_BAR_WIDTH_MM, LID_BAR_THICKNESS_MM]).translate(
+      centerX - length / 2,
+      centerY - LID_BAR_WIDTH_MM / 2,
+      socketFloorZ - LID_BAR_THICKNESS_MM,
+    );
+    solid = addAll(wasm, solid, [bar]);
+  }
   return solid;
+}
+
+/** Square prism from below z 0 up to `top`, with a 45° chamfer at both ends. */
+function chamferedSquareCut(wasm: ManifoldToplevel, cx: number, cy: number, size: number, top: number) {
+  const c = LID_GRIP_CHAMFER_MM;
+  const slab = (side: number, z: number, h: number) =>
+    wasm.Manifold.cube([side, side, h]).translate(cx - side / 2, cy - side / 2, z);
+  const parts = [
+    slab(size + c * 2, -0.5, 0.5),
+    slab(size, c, top - c * 2),
+    slab(size + c * 2, top, 0.5),
+  ];
+  const bottom = wasm.Manifold.hull([parts[0], parts[1]]);
+  const upper = wasm.Manifold.hull([parts[1], parts[2]]);
+  for (const part of parts) drop(part);
+  const cut = wasm.Manifold.union(bottom, upper);
+  drop(bottom);
+  drop(upper);
+  return cut;
 }
 
 export function buildLid(

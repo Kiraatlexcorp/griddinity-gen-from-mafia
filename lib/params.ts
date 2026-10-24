@@ -79,8 +79,12 @@ export type BinParams = {
 
 /** The lid takes its width and depth from the bin, so the two always match. */
 export type LidParams = {
-  /** Finger notch on the front edge for lifting the lid off. */
-  notch: boolean;
+  /**
+   * How to lift the lid off. "handle" is a recessed pocket with a bar across
+   * it, flush with the socket floor; "hole" is a square finger hole.
+   * Neither rises into the top sockets, so bins still stack on the lid.
+   */
+  grip: LidGrip;
 };
 
 export type StudioState = {
@@ -125,7 +129,21 @@ export const DEFAULT_BIN: BinParams = {
   labelText: "",
 };
 
-export const DEFAULT_LID: LidParams = { notch: true };
+export const LID_GRIPS = ["none", "handle", "hole"] as const;
+export type LidGrip = (typeof LID_GRIPS)[number];
+export const DEFAULT_LID: LidParams = { grip: "handle" };
+const GRIP_CODES: Record<LidGrip, string> = { none: "n", handle: "h", hole: "o" };
+
+/** `lgrip`, or the old `lnotch` link: a notch maps to the hole, no notch to none. */
+function decodeGrip(params: URLSearchParams): LidGrip {
+  const code = params.get("lgrip");
+  const found = LID_GRIPS.find((grip) => GRIP_CODES[grip] === code);
+  if (found) return found;
+  const legacy = params.get("lnotch");
+  if (legacy === "1") return "hole";
+  if (legacy === "0") return "none";
+  return DEFAULT_LID.grip;
+}
 
 export const DEFAULT_STATE: StudioState = {
   tab: "baseplate",
@@ -283,7 +301,7 @@ export function decodeState(search: string): StudioState {
       labelText: cleanLabelText(params.get("lt") ?? ""),
     },
     lid: {
-      notch: bool(params.get("lnotch"), DEFAULT_LID.notch),
+      grip: decodeGrip(params),
     },
   };
 }
@@ -322,7 +340,7 @@ export function encodeState(state: StudioState): string {
   params.set("dvt", trim(state.bin.dividerWall));
   params.set("dvh", trim(state.bin.dividerHeight));
   if (state.bin.labelText) params.set("lt", state.bin.labelText);
-  params.set("lnotch", state.lid.notch ? "1" : "0");
+  params.set("lgrip", GRIP_CODES[state.lid.grip]);
   return params.toString();
 }
 
@@ -340,4 +358,19 @@ export function formatMm(value: number) {
   const rounded = Math.round(value * 100) / 100;
   if (Number.isInteger(rounded)) return String(rounded);
   return rounded.toFixed(2).replace(/0$/, "").replace(/\.$/, "");
+}
+
+/** Back to the default params for the open part tab; the other tabs keep theirs. */
+export function resetTab(state: StudioState): StudioState {
+  if (state.tab === "baseplate") return { ...state, plate: DEFAULT_PLATE };
+  if (state.tab === "bin") return { ...state, bin: DEFAULT_BIN };
+  return { ...state, lid: DEFAULT_LID };
+}
+
+/** Query string for the address bar: empty when every part is at its defaults. */
+export function urlSearch(state: StudioState): string {
+  const encoded = encodeState(state);
+  return encoded === encodeState({ ...DEFAULT_STATE, tab: state.tab }) && state.tab === DEFAULT_STATE.tab
+    ? ""
+    : `?${encoded}`;
 }

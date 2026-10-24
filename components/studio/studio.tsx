@@ -1,5 +1,7 @@
 "use client";
 
+import { Segmented } from "@/components/studio/segmented";
+
 import { MafiaLogo } from "@/components/studio/mafia-logo";
 import { useEffect, useState } from "react";
 import { Box, Download, Grid3x3, Link2, Moon, PanelTop, Sun } from "lucide-react";
@@ -28,13 +30,14 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
-import { Tabs, TabsIndicator, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { download3mf, downloadStls } from "@/lib/export/download";
 import { binFootprint, binHeight, planBaseplate, planBinSplit } from "@/lib/fit";
 import {
   decodeState,
   encodeState,
   formatMm,
+  resetTab,
+  urlSearch,
   type StudioState,
 } from "@/lib/params";
 import { useSearchParams } from "next/navigation";
@@ -105,9 +108,9 @@ export function Studio() {
   const height = binHeight(state.bin.gridZ, state.bin.lip);
 
   useEffect(() => {
-    const next = `?${encodeState(state)}`;
+    const next = urlSearch(state);
     if (window.location.search !== next) {
-      window.history.replaceState(null, "", next);
+      window.history.replaceState(null, "", next || window.location.pathname);
     }
   }, [state]);
 
@@ -175,8 +178,13 @@ export function Studio() {
     {
       label: "Height",
       value: `${formatMm(lidHeight())} mm`,
-      badge: state.lid.notch ? "notch" : "no notch",
-      note: state.lid.notch ? "With finger notch" : "Plain edge",
+      badge: state.lid.grip === "none" ? "no grip" : state.lid.grip,
+      note:
+        state.lid.grip === "handle"
+          ? "Recessed handle"
+          : state.lid.grip === "hole"
+            ? "Finger hole"
+            : "Plain top",
       hint: "Plug, plate and sockets",
     },
     {
@@ -268,30 +276,16 @@ export function Studio() {
           <div className="px-2 pt-1.5 pb-0.5">
             <Wordmark />
           </div>
-          <Tabs
+          <Segmented
+            aria-label="Part"
             value={state.tab}
-            onValueChange={(value) => {
-              if (value === "bin" || value === "baseplate" || value === "lid") {
-                setState((current) => ({ ...current, tab: value }));
-              }
-            }}
-          >
-            <TabsList className="motion-tabs relative h-9! w-full rounded-full">
-              <TabsIndicator />
-              <TabsTrigger value="baseplate">
-                <Grid3x3 data-icon="inline-start" />
-                Baseplate
-              </TabsTrigger>
-              <TabsTrigger value="bin">
-                <Box data-icon="inline-start" />
-                Bin
-              </TabsTrigger>
-              <TabsTrigger value="lid">
-                <PanelTop data-icon="inline-start" />
-                Lid
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+            options={[
+              { value: "baseplate", label: <><Grid3x3 data-icon="inline-start" />Baseplate</> },
+              { value: "bin", label: <><Box data-icon="inline-start" />Bin</> },
+              { value: "lid", label: <><PanelTop data-icon="inline-start" />Lid</> },
+            ]}
+            onChange={(tab) => setState((current) => ({ ...current, tab }))}
+          />
         </SidebarHeader>
         <SidebarContent className="px-2 pt-1 pb-4">
           <div className="motion-stagger flex shrink-0 flex-col gap-3">
@@ -301,6 +295,11 @@ export function Studio() {
               onLoad={(next, pick) => {
                 setState(next);
                 setPicked(pick);
+              }}
+              onCustom={() => setPicked(null)}
+              onReset={() => {
+                setState((current) => resetTab(current));
+                setPicked(null);
               }}
             />
             {state.tab === "baseplate" ? (
