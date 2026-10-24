@@ -324,7 +324,7 @@ export function Studio() {
               />
             )}
           </div>
-          <IridescentFoil className="motion-rise mt-3 h-14 flex-none rounded-xl [--motion-i:4]">
+          <IridescentFoil className="motion-rise mt-3 h-8 flex-none rounded-lg [--motion-i:4]">
             <HorrorBanner />
           </IridescentFoil>
         </SidebarContent>

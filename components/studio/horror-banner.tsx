@@ -14,6 +14,9 @@ export const HORROR_LINES = [
   "Every drawer has a secret. Yours is now organised.",
   "Do not open the 3 a.m. print. It warped.",
   "The bins are watching. They want a magnet.",
+  "They're coming from inside the drawer.",
+  "Don't open the bin. Seriously.",
+  "Every screw has a home. Mwahaha.",
 ] as const;
 
 function GithubMark(props: React.SVGProps<SVGSVGElement>) {
@@ -33,8 +36,8 @@ export function HorrorBanner() {
     setLine(HORROR_LINES[Math.floor(Math.random() * HORROR_LINES.length)]);
   }, []);
   return (
-    <div className="flex h-full items-center gap-2 px-3">
-      <p className="min-w-0 flex-1 text-center font-heading text-[13px] leading-snug font-semibold tracking-tight text-foreground/90 text-balance">
+    <div className="flex h-full items-center gap-1.5 pr-1 pl-3">
+      <p className="min-w-0 flex-1 truncate text-center font-heading text-xs leading-none font-semibold tracking-tight text-foreground/90" title={line}>
         {line}
       </p>
       <a
@@ -42,9 +45,9 @@ export function HorrorBanner() {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Gridfinity Studio on GitHub (opens in a new tab)"
-        className="flex size-8 shrink-0 items-center justify-center rounded-full text-foreground/80 transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        className="flex size-6 shrink-0 items-center justify-center rounded-full text-foreground/80 transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       >
-        <GithubMark className="size-4" />
+        <GithubMark className="size-3.5" />
       </a>
     </div>
   );
