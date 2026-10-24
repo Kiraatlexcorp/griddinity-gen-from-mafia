@@ -28,7 +28,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsIndicator, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { download3mf, downloadStls } from "@/lib/export/download";
 import { binFootprint, binHeight, planBaseplate } from "@/lib/fit";
 import {
@@ -275,7 +275,8 @@ export function Studio() {
               }
             }}
           >
-            <TabsList className="w-full">
+            <TabsList className="motion-tabs relative h-9! w-full rounded-full">
+              <TabsIndicator />
               <TabsTrigger value="baseplate">
                 <Grid3x3 data-icon="inline-start" />
                 Baseplate
@@ -321,7 +322,7 @@ export function Studio() {
               />
             )}
           </div>
-          <IridescentFoil className="motion-rise mt-auto h-16 shrink-0 rounded-xl [--motion-i:4]">
+          <IridescentFoil className="motion-rise mt-3 h-14 flex-none rounded-xl [--motion-i:4]">
             <p className="flex h-full items-center justify-center font-heading text-sm font-semibold tracking-tight text-foreground/90">
               a product by Le&apos;X
             </p>

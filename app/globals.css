@@ -427,3 +427,44 @@
     filter: none;
   }
 }
+
+/* Part selector: transitions.dev P16 "Tabs sliding". Base UI's Tabs.Indicator
+   writes --active-tab-*; CSS owns the tween (fast 250ms, smooth-out). */
+.motion-tabs [data-slot="tabs-trigger"] {
+  z-index: 1;
+  border-radius: 9999px;
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: color-mix(in oklab, var(--foreground) 55%, transparent);
+  transition: color var(--duration-fast) var(--ease-smooth-out);
+}
+.motion-tabs [data-slot="tabs-trigger"]:hover,
+.motion-tabs [data-slot="tabs-trigger"][data-active] {
+  color: var(--foreground);
+}
+.motion-tabs-indicator {
+  position: absolute;
+  top: var(--active-tab-top);
+  left: 0;
+  z-index: 0;
+  width: var(--active-tab-width);
+  height: var(--active-tab-height);
+  transform: translateX(var(--active-tab-left));
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--primary) 32%, var(--background));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--primary) 70%, transparent),
+    0 1px 2px rgb(0 0 0 / 0.3);
+  transition:
+    transform var(--duration-fast) var(--ease-smooth-out),
+    width var(--duration-fast) var(--ease-smooth-out);
+  will-change: transform, width;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .motion-tabs-indicator,
+  .motion-tabs [data-slot="tabs-trigger"] {
+    transition: none;
+  }
+}
