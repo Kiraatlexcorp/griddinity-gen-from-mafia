@@ -39,9 +39,14 @@ export type BaseplateParams = {
   connectors: ConnectorKind;
   /** Outer edges that get connectors. Seams between bed pieces always do. */
   edges: PlateEdge[];
+  /** Half-grid: 21 mm sockets, so half-size bins sit anywhere. */
+  half?: boolean;
 };
 
 export type BinParams = {
+  /** Half-grid: 21 mm base pads, and gridX / gridY may be in 0.5 steps. */
+  half?: boolean;
+  /** Width in 42 mm units (0.5 steps when half). */
   gridX: number;
   gridY: number;
   gridZ: number;
@@ -238,6 +243,7 @@ export function decodeState(search: string): StudioState {
     ? (connectorRaw as ConnectorKind)
     : DEFAULT_PLATE.connectors;
 
+  const binHalf = bool(params.get("half"), false);
   return {
     tab,
     plate: {
@@ -253,10 +259,12 @@ export function decodeState(search: string): StudioState {
       floor: bool(params.get("floor"), DEFAULT_PLATE.floor),
       connectors,
       edges: decodeEdges(params.get("edges")),
+      ...(bool(params.get("phalf"), false) ? { half: true } : {}),
     },
     bin: {
-      gridX: Math.round(num(params.get("bx"), DEFAULT_BIN.gridX, 1, 12)),
-      gridY: Math.round(num(params.get("by"), DEFAULT_BIN.gridY, 1, 12)),
+      ...(binHalf ? { half: true } : {}),
+      gridX: binUnits(params.get("bx"), DEFAULT_BIN.gridX, binHalf),
+      gridY: binUnits(params.get("by"), DEFAULT_BIN.gridY, binHalf),
       gridZ: Math.round(num(params.get("bz"), DEFAULT_BIN.gridZ, 1, 12)),
       elements: readElements(params),
       label,
@@ -295,6 +303,8 @@ export function encodeState(state: StudioState): string {
   params.set("floor", state.plate.floor ? "1" : "0");
   params.set("conn", state.plate.connectors);
   params.set("edges", encodeEdges(state.plate.edges));
+  if (state.plate.half) params.set("phalf", "1");
+  if (state.bin.half) params.set("half", "1");
   params.set("bx", String(state.bin.gridX));
   params.set("by", String(state.bin.gridY));
   params.set("bz", String(state.bin.gridZ));
@@ -314,6 +324,12 @@ export function encodeState(state: StudioState): string {
   if (state.bin.labelText) params.set("lt", state.bin.labelText);
   params.set("lnotch", state.lid.notch ? "1" : "0");
   return params.toString();
+}
+
+/** Bin size in 42 mm units: whole units, or 0.5 steps (from 0.5) on half-grid. */
+export function binUnits(value: string | null, fallback: number, half: boolean): number {
+  const raw = num(value, fallback, half ? 0.5 : 1, 12);
+  return half ? Math.round(raw * 2) / 2 : Math.round(raw);
 }
 
 function trim(value: number) {

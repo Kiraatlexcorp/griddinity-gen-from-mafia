@@ -5,6 +5,7 @@ import {
   BIN_CLEARANCE_MM,
   HEIGHT_UNIT_MM,
   PITCH_MM,
+  cellPitch,
   PUZZLE_DEPTH_MM,
   STACKING_LIP_HEIGHT_MM,
   SOCKET_DEPTH_MM,
@@ -66,6 +67,8 @@ export type PlatePlan = {
   marginBottom: number;
   marginTop: number;
   thickness: number;
+  /** Cell pitch, 42 mm or 21 mm for half-grid. gridX/gridY count cells at this pitch. */
+  pitch: number;
   pieces: PlatePiecePlan[];
 };
 
@@ -182,7 +185,9 @@ export function planBaseplate(input: {
   floor?: boolean;
   connectors?: ConnectorKind;
   edges?: PlateEdge[];
+  half?: boolean;
 }): PlatePlan | { error: string } {
+  const pitch = cellPitch(input.half);
   if (!(input.bed >= PITCH_MM)) {
     return { error: "The bed needs at least 42 mm in both directions." };
   }
@@ -197,12 +202,13 @@ export function planBaseplate(input: {
   let outerD: number;
 
   if (input.unit === "grid") {
-    gridX = Math.floor(input.width);
-    gridY = Math.floor(input.depth);
-    outerW = gridX * PITCH_MM;
-    outerD = gridY * PITCH_MM;
+    // Grid units stay 42 mm; half-grid allows halves (1.5 units = 3 half cells).
+    gridX = Math.floor((input.width * PITCH_MM) / pitch + 1e-9);
+    gridY = Math.floor((input.depth * PITCH_MM) / pitch + 1e-9);
+    outerW = gridX * pitch;
+    outerD = gridY * pitch;
   } else {
-    const fit = fitGrid(input.width, input.depth);
+    const fit = fitGrid(input.width, input.depth, pitch);
     gridX = fit.gridX;
     gridY = fit.gridY;
     if (input.pad) {
@@ -236,8 +242,8 @@ export function planBaseplate(input: {
   let columns: AxisPiece[];
   let rows: AxisPiece[];
   try {
-    columns = splitAxis(gridX, PITCH_MM, marginLeft, marginRight, input.bed, tab(gridY, "right"));
-    rows = splitAxis(gridY, PITCH_MM, marginBottom, marginTop, input.bed, tab(gridX, "top"));
+    columns = splitAxis(gridX, pitch, marginLeft, marginRight, input.bed, tab(gridY, "right"));
+    rows = splitAxis(gridY, pitch, marginBottom, marginTop, input.bed, tab(gridX, "top"));
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : "Could not split the plate.",
@@ -283,6 +289,7 @@ export function planBaseplate(input: {
       input.floor === false
         ? SOCKET_DEPTH_MM
         : plateThicknessMm(input.style, input.magnets, input.screws),
+    pitch,
     pieces,
   };
 }

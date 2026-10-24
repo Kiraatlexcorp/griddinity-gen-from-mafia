@@ -42,7 +42,7 @@ export function genderOf(edge: PlateEdge): ConnectorGender {
  */
 export function connectorSites(
   piece: PlatePiecePlan,
-  plan: Pick<PlatePlan, "pieces" | "marginLeft" | "marginBottom">,
+  plan: Pick<PlatePlan, "pieces" | "marginLeft" | "marginBottom"> & { pitch?: number },
   kind: ConnectorKind,
   edges: PlateEdge[],
 ): ConnectorSite[] {
@@ -71,12 +71,16 @@ export function connectorSites(
         : edge === "top"
           ? plan.marginBottom
           : 0;
+    // Half-grid plates keep connectors on the 42 mm lines (every other line).
+    const pitch = plan.pitch ?? PITCH_MM;
+    const every = Math.max(1, Math.round(PITCH_MM / pitch));
     for (let line = 1; line < cells; line += 1) {
+      if (line % every !== 0) continue;
       sites.push({
         edge,
         gender: kind === "clips" ? "female" : genderOf(edge),
         seam,
-        along: start + line * PITCH_MM,
+        along: start + line * pitch,
         at,
         neighbourMargin,
       });

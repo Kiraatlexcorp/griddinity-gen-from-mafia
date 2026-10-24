@@ -5,6 +5,12 @@
  */
 
 export const PITCH_MM = 42;
+/** Half-grid: 21 mm cells, two per standard cell. Same base profile, smaller pads. */
+export const HALF_PITCH_MM = PITCH_MM / 2;
+
+export function cellPitch(half: boolean | undefined): number {
+  return half ? HALF_PITCH_MM : PITCH_MM;
+}
 export const HEIGHT_UNIT_MM = 7;
 /** n units span n * 42 - 0.5, so one unit is 41.5 mm. */
 export const BIN_CLEARANCE_MM = 0.5;
