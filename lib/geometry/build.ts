@@ -72,6 +72,7 @@ const LIP_STATIONS = [
 ] as const;
 
 function tessellation(quality: Quality): Tessellation {
+  if (quality === "draft") return { corner: 3, circle: 8 };
   return quality === "preview"
     ? { corner: 5, circle: 14 }
     : { corner: 10, circle: 28 };

@@ -1,6 +1,7 @@
 import type { BaseplateParams, BinParams } from "@/lib/params";
 
-export type Quality = "preview" | "export";
+/** "draft" is the coarse low-poly viewer mesh; "export" is what STL/3MF get. */
+export type Quality = "draft" | "preview" | "export";
 
 export type MeshPart = {
   name: string;
