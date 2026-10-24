@@ -156,6 +156,7 @@ function DrawerPlanner({
         <Button
           type="button"
           size="sm"
+          className="h-9 w-full rounded-full"
           disabled={!fits || applied}
           onClick={() => onApply(plan.apply)}
         >

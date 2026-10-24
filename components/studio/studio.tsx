@@ -349,11 +349,11 @@ export function Studio() {
               <Sun className="hidden dark:block" />
               <Moon className="dark:hidden" />
             </Button>
-            <Button type="button" size="sm" disabled={!canExport} onClick={() => void save("stl")}>
+            <Button type="button" size="sm" className="rounded-full" disabled={!canExport} onClick={() => void save("stl")}>
               {exportIcon("stl")}
               STL
             </Button>
-            <Button type="button" variant="outline" size="sm" disabled={!canExport} onClick={() => void save("3mf")}>
+            <Button type="button" variant="outline" size="sm" className="rounded-full" disabled={!canExport} onClick={() => void save("3mf")}>
               {exportIcon("3mf")}
               3MF
             </Button>
