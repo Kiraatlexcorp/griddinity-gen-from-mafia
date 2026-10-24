@@ -121,7 +121,7 @@ export function SectionCard({
       open={open}
       onOpenChange={setOpen}
       data-section={id}
-      render={<Card size="sm" className={SECTION_CARD_CLASS} />}
+      render={<Card size="sm" className={cn(SECTION_CARD_CLASS, "motion-rise")} />}
     >
       <SectionHeader title={title} open={open} action={action} />
       <CollapsibleContent>

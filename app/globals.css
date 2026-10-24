@@ -319,3 +319,111 @@
   will-change: background;
   background-repeat: no-repeat;
 }
+
+/* ── Motion layer ─────────────────────────────────────────────────────────
+   Tokens from transitions.dev (smooth-out curve, duration scale, P22 toast:
+   rise 16px + 2px cross-blur + 0.97 scale, 350ms open / 250ms close). */
+:root {
+  --duration-micro: 80ms;
+  --duration-quick: 150ms;
+  --duration-fast: 250ms;
+  --duration-medium: 350ms;
+  --duration-slow: 400ms;
+  --duration-very-slow: 500ms;
+  --duration-stagger: 40ms;
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.36, 0.64, 1);
+  --ease-toggle: cubic-bezier(0.34, 1.35, 0.64, 1);
+  --motion-distance: 16px;
+  --motion-blur: 2px;
+  --motion-scale: 0.97;
+}
+
+@keyframes motion-rise {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--motion-distance) / 2)) scale(var(--motion-scale));
+    filter: blur(var(--motion-blur));
+  }
+}
+
+/* Mount: rise + cross-blur, staggered by sibling index. */
+.motion-rise {
+  animation: motion-rise var(--duration-medium) var(--ease-smooth-out) both;
+  animation-delay: calc(var(--duration-stagger) * var(--motion-i, 0));
+}
+.motion-stagger > :nth-child(2) { --motion-i: 1; }
+.motion-stagger > :nth-child(3) { --motion-i: 2; }
+.motion-stagger > :nth-child(4) { --motion-i: 3; }
+.motion-stagger > :nth-child(5) { --motion-i: 4; }
+.motion-stagger > :nth-child(6) { --motion-i: 5; }
+
+/* Popovers, selects, menus, tooltips (tw-animate keyframes, retimed + blurred). */
+:is([data-slot="select-content"], [data-slot="dropdown-menu-content"], [data-slot="dropdown-menu-sub-content"], [data-slot="tooltip-content"])[data-open] {
+  animation-duration: var(--duration-fast);
+  animation-timing-function: var(--ease-smooth-out);
+  --tw-enter-blur: var(--motion-blur);
+  --tw-enter-scale: var(--motion-scale);
+}
+:is([data-slot="select-content"], [data-slot="dropdown-menu-content"], [data-slot="dropdown-menu-sub-content"], [data-slot="tooltip-content"])[data-closed] {
+  animation-duration: var(--duration-quick);
+  animation-timing-function: var(--ease-smooth-out);
+  --tw-exit-blur: var(--motion-blur);
+  --tw-exit-scale: var(--motion-scale);
+}
+
+/* Dialog / sheet: slow open, medium close. */
+[data-slot="sheet-content"],
+[data-slot="sheet-overlay"] {
+  transition-duration: var(--duration-slow);
+  transition-timing-function: var(--ease-smooth-out);
+}
+[data-slot="sheet-content"][data-ending-style],
+[data-slot="sheet-overlay"][data-ending-style] {
+  transition-duration: var(--duration-medium);
+}
+
+/* Part selector tabs + switches. */
+[data-slot="tabs-trigger"] {
+  transition-property: color, background-color, box-shadow, border-color;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-smooth-out);
+}
+[data-slot="switch-thumb"] {
+  transition-duration: var(--duration-medium);
+  transition-timing-function: var(--ease-toggle);
+}
+
+/* Toast (P22). */
+.motion-toast {
+  opacity: 0;
+  transform: translate(-50%, var(--motion-distance)) scale(var(--motion-scale));
+  filter: blur(var(--motion-blur));
+  transition:
+    opacity var(--duration-fast) var(--ease-smooth-out),
+    transform var(--duration-fast) var(--ease-smooth-out),
+    filter var(--duration-fast) var(--ease-smooth-out);
+}
+.motion-toast[data-open="true"] {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+  filter: blur(0);
+  transition-duration: var(--duration-medium);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-rise,
+  :is([data-slot="select-content"], [data-slot="dropdown-menu-content"], [data-slot="dropdown-menu-sub-content"], [data-slot="tooltip-content"]) {
+    animation: none !important;
+  }
+  .motion-toast,
+  [data-slot="sheet-content"],
+  [data-slot="sheet-overlay"],
+  [data-slot="tabs-trigger"],
+  [data-slot="switch-thumb"] {
+    transition-duration: 0ms !important;
+  }
+  .motion-toast {
+    filter: none;
+  }
+}

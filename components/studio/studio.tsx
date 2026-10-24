@@ -9,6 +9,7 @@ import { BinControls, LidControls, PlateControls } from "@/components/studio/con
 import { lidHeight } from "@/lib/geometry/build";
 import { PresetsCard } from "@/components/studio/presets-card";
 import { IridescentFoil } from "@/components/studio/iridescent-foil";
+import { Toast, useToast } from "@/components/studio/toast";
 import type { PickedPreset } from "@/lib/presets";
 import { Preview } from "@/components/studio/preview";
 import { useGeometry } from "@/components/studio/use-geometry";
@@ -84,6 +85,7 @@ export function Studio() {
   const [state, setState] = useState<StudioState>(() => decodeState(search.toString()));
   const [picked, setPicked] = useState<PickedPreset | null>(null);
   const [copied, setCopied] = useState(false);
+  const { toast, show: showToast } = useToast();
   const [exporting, setExporting] = useState<null | "stl" | "3mf">(null);
   const [exportError, setExportError] = useState<string | null>(null);
 
@@ -119,17 +121,18 @@ export function Studio() {
     const url = `${window.location.origin}${window.location.pathname}?${encodeState(state)}`;
     await navigator.clipboard.writeText(url);
     setCopied(true);
+    showToast("Link copied");
     window.setTimeout(() => setCopied(false), 1600);
   }
 
   const stem =
     state.tab === "bin"
-      ? `acmee-bin-${state.bin.gridX}x${state.bin.gridY}x${state.bin.gridZ}`
+      ? `acmie-bin-${state.bin.gridX}x${state.bin.gridY}x${state.bin.gridZ}`
       : state.tab === "lid"
-        ? `acmee-lid-${state.bin.gridX}x${state.bin.gridY}`
+        ? `acmie-lid-${state.bin.gridX}x${state.bin.gridY}`
         : "error" in plan
-        ? "acmee-baseplate"
-        : `acmee-baseplate-${plan.gridX}x${plan.gridY}`;
+        ? "acmie-baseplate"
+        : `acmie-baseplate-${plan.gridX}x${plan.gridY}`;
 
   async function save(kind: "stl" | "3mf") {
     setExporting(kind);
@@ -138,6 +141,7 @@ export function Studio() {
       const meshes = await exportMesh();
       if (kind === "stl") downloadStls(meshes, stem);
       else download3mf(meshes, state.plate.bed, stem, stem);
+      showToast(`${stem}.${kind} downloaded`);
     } catch (caught) {
       setExportError(caught instanceof Error ? caught.message : "Export failed.");
     } finally {
@@ -288,7 +292,7 @@ export function Studio() {
           </Tabs>
         </SidebarHeader>
         <SidebarContent className="px-2 pt-1 pb-4">
-          <div className="flex shrink-0 flex-col gap-3">
+          <div className="motion-stagger flex shrink-0 flex-col gap-3">
             <PresetsCard
               state={state}
               picked={picked}
@@ -317,9 +321,9 @@ export function Studio() {
               />
             )}
           </div>
-          <IridescentFoil className="mt-auto h-16 shrink-0 rounded-xl">
+          <IridescentFoil className="motion-rise mt-auto h-16 shrink-0 rounded-xl [--motion-i:4]">
             <p className="flex h-full items-center justify-center font-heading text-sm font-semibold tracking-tight text-foreground/90">
-              a product by LeX corp
+              a product by Le&apos;X
             </p>
           </IridescentFoil>
         </SidebarContent>
@@ -327,7 +331,7 @@ export function Studio() {
 
       <SidebarInset className="min-h-0 overflow-y-auto md:overflow-hidden md:ring-1 md:ring-border">
         <header className="sticky top-0 z-10 flex h-(--header-height) shrink-0 items-center gap-2 border-b bg-background/90 px-3 backdrop-blur md:rounded-t-xl lg:px-5">
-          <h1 className="sr-only">Gridfinity Studio by ACMEE</h1>
+          <h1 className="sr-only">Gridfinity Studio by ACMIE</h1>
           <SidebarTrigger className="-ml-1" />
           <span aria-hidden className="mx-1 h-4 w-px bg-border" />
           <span className="font-heading text-base font-semibold">
@@ -374,6 +378,7 @@ export function Studio() {
           </Card>
         </div>
       </SidebarInset>
+      <Toast message={toast.message} open={toast.open} />
     </SidebarProvider>
   );
 }
