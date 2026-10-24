@@ -10,6 +10,7 @@ import {
   Magnet,
   PanelTop,
   Printer,
+  Ruler,
   Shapes,
   Sparkles,
   Square,
@@ -108,6 +109,7 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
   dividers: Columns3,
   features: Tag,
   lid: PanelTop,
+  drawer: Ruler,
   elements: Shapes,
 };
 

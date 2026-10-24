@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +27,7 @@ import {
   fitDividers,
   labelTabFits,
   planBaseplate,
+  planDrawer,
 } from "@/lib/fit";
 import {
   formatMm,
@@ -95,6 +98,76 @@ const EDGE_LABELS: Record<PlateEdge, string> = {
   top: "Back",
 };
 
+
+function DrawerPlanner({
+  plate,
+  onApply,
+}: {
+  plate: BaseplateParams;
+  onApply: (partial: Partial<BaseplateParams>) => void;
+}) {
+  const fromPlate = plate.unit === "mm" && plate.pad;
+  const [w, setW] = useState(fromPlate ? plate.width : 500);
+  const [d, setD] = useState(fromPlate ? plate.depth : 380);
+  const [pad, setPad] = useState(true);
+  const plan = planDrawer(w, d, pad);
+  const applied =
+    plate.unit === plan.apply.unit &&
+    plate.pad === plan.apply.pad &&
+    Math.abs(plate.width - plan.apply.width) < 0.01 &&
+    Math.abs(plate.depth - plan.apply.depth) < 0.01;
+  const fits = plan.gridX > 0 && plan.gridY > 0;
+
+  return (
+    <SectionCard id="drawer" title="Drawer fit">
+      <FieldGroup className="gap-4">
+        <div className="grid grid-cols-2 gap-2">
+          <MeasureField label="Width" suffix="MM" value={w} min={42} max={1200} step={1} digits={0} onChange={setW} />
+          <MeasureField label="Depth" suffix="MM" value={d} min={42} max={1200} step={1} digits={0} onChange={setD} />
+        </div>
+        <p className="font-mono text-sm tabular-nums" data-testid="drawer-grid">
+          {fits ? `${plan.gridX} × ${plan.gridY} cells · ${formatMm(plan.gridW)} × ${formatMm(plan.gridD)} mm grid` : "Drawer is smaller than one 42 mm cell"}
+        </p>
+        {fits ? (
+          <div className="grid grid-cols-4 gap-1.5 text-center">
+            {(
+              [
+                ["Left", plan.marginLeft],
+                ["Right", plan.marginRight],
+                ["Front", plan.marginBottom],
+                ["Back", plan.marginTop],
+              ] as const
+            ).map(([side, mm]) => (
+              <div key={side} className="tune-field flex-col justify-center gap-0 h-auto! py-1">
+                <span className="text-[11px] text-muted-foreground">{side}</span>
+                <span className="text-xs tabular-nums">{formatMm(mm)}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <Choice
+          label="Leftover space"
+          hint={pad ? "Baseplate fills the drawer: leftover becomes a solid border on each edge." : "Bare grid: leftover stays as gaps around the plate."}
+          value={pad ? "pad" : "grid"}
+          options={[
+            { value: "pad", label: "Pad edges" },
+            { value: "grid", label: "Grid only" },
+          ]}
+          onChange={(value) => setPad(value === "pad")}
+        />
+        <Button
+          type="button"
+          size="sm"
+          disabled={!fits || applied}
+          onClick={() => onApply(plan.apply)}
+        >
+          {applied ? "Applied to baseplate" : "Apply to baseplate"}
+        </Button>
+      </FieldGroup>
+    </SectionCard>
+  );
+}
+
 export function PlateControls({
   plate,
   onChange,
@@ -112,6 +185,7 @@ export function PlateControls({
 
   return (
     <div className="flex flex-col gap-3">
+      <DrawerPlanner plate={plate} onApply={patch} />
       <SectionCard id="plate" title="Plate">
         <p className="font-mono text-sm tabular-nums">
           {failed

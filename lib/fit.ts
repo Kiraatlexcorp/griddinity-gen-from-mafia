@@ -320,3 +320,29 @@ export function binCavityHeight(gridZ: number, wall: number, lite: boolean) {
 export function labelTabFits(cavity: number) {
   return cavity >= TAB_HEIGHT_MM + 1;
 }
+
+export type DrawerPlan = GridFit & {
+  drawerW: number;
+  drawerD: number;
+  /** Baseplate params that reproduce this plan in the studio. */
+  apply: { unit: "mm"; width: number; depth: number; pad: boolean };
+};
+
+/**
+ * Drawer fit planner: whole 42 mm cells that fit a drawer, with the leftover on
+ * each side. `pad` makes the baseplate fill the drawer with a solid border; off,
+ * the plate is the bare grid and the leftover stays as gaps around it.
+ */
+export function planDrawer(widthMm: number, depthMm: number, pad: boolean): DrawerPlan {
+  const w = Number.isFinite(widthMm) ? Math.max(0, widthMm) : 0;
+  const d = Number.isFinite(depthMm) ? Math.max(0, depthMm) : 0;
+  const fit = fitGrid(w, d);
+  return {
+    ...fit,
+    drawerW: w,
+    drawerD: d,
+    apply: pad
+      ? { unit: "mm", width: w, depth: d, pad: true }
+      : { unit: "mm", width: fit.gridW, depth: fit.gridD, pad: false },
+  };
+}
