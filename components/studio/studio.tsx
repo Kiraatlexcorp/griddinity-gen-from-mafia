@@ -8,6 +8,7 @@ import { PITCH_MM } from "@/lib/spec";
 import { BinControls, LidControls, PlateControls } from "@/components/studio/controls";
 import { lidHeight } from "@/lib/geometry/build";
 import { PresetsCard } from "@/components/studio/presets-card";
+import { IridescentFoil } from "@/components/studio/iridescent-foil";
 import type { PickedPreset } from "@/lib/presets";
 import { Preview } from "@/components/studio/preview";
 import { useGeometry } from "@/components/studio/use-geometry";
@@ -316,6 +317,11 @@ export function Studio() {
               />
             )}
           </div>
+          <IridescentFoil className="mt-auto h-16 shrink-0 rounded-xl">
+            <p className="flex h-full items-center justify-center font-heading text-sm font-semibold tracking-tight text-foreground/90">
+              a product by LeX corp
+            </p>
+          </IridescentFoil>
         </SidebarContent>
       </Sidebar>
 

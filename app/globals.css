@@ -190,3 +190,132 @@
     background-position: -200% 50%;
   }
 }
+
+/* Ported from dqnamo.com/experiments/iridescent-foil: six stacked gradient layers
+   (foil, film, pearl, content, shine, glare) driven by pointer + scroll CSS vars. */
+.foil-surface {
+  --pointer-x: 50%;
+  --pointer-y: 50%;
+  --foil-shift: 0%;
+  --foil-y-shift: 0%;
+  --glare-x: 50%;
+  --glare-y: 50%;
+  --shine-angle: 135deg;
+  --shine-opacity: 0.62;
+  --shine-opacity-scale: 1;
+  --film-opacity: 0.34;
+  --foil-filter: saturate(1.18) contrast(1.22) brightness(1);
+  --highlight-filter: brightness(1) saturate(1);
+  --foil-base-gradient: linear-gradient(135deg, #eee 0%, #dcdcdc 40%, #c9c9c9 72%, #e8e8e8 100%);
+  --glare-opacity: 0.38;
+  --pearl-opacity: 0.98;
+  --surface-inset-shadow: inset 0 0 0 1px #ffffff61;
+  isolation: isolate;
+  background: #e8e8e8;
+  box-shadow: var(--surface-inset-shadow);
+  contain: layout paint style;
+  position: relative;
+  overflow: hidden;
+}
+.dark .foil-surface {
+  --film-opacity: 0.46;
+  --foil-filter: saturate(1.22) contrast(1.12) brightness(0.96);
+  --highlight-filter: brightness(0.72) saturate(0.82);
+  --foil-base-gradient: linear-gradient(135deg, #2a2a2a 0%, #2a2a2a 44%, #333 72%, #2a2a2a 100%);
+  --glare-opacity: 0.26;
+  --pearl-opacity: 0.56;
+  --shine-opacity-scale: 0.42;
+  --surface-inset-shadow: inset 0 0 0 1px #ffffff14;
+  background: #2a2a2a;
+}
+.foil-content,
+.foil-film,
+.foil-foil,
+.foil-glare,
+.foil-pearl,
+.foil-shine {
+  position: absolute;
+  inset: 0;
+}
+.foil-film,
+.foil-foil,
+.foil-glare,
+.foil-pearl,
+.foil-shine {
+  pointer-events: none;
+  background-repeat: no-repeat;
+}
+.foil-film,
+.foil-foil,
+.foil-pearl,
+.foil-shine {
+  inset: -48%;
+}
+.foil-foil {
+  z-index: 0;
+  background:
+    linear-gradient(112deg, transparent 0%, transparent 28%, #00dcff14 32%, #50ffbe12 36%, #beff500d 40%, transparent 46%, #ffe6460a 50%, #ff46b412 56%, #965aff12 64%, #3c78ff0f 70%, transparent 75%, transparent 100%),
+    var(--foil-base-gradient);
+  background-repeat: no-repeat;
+  background-position: var(--foil-shift) center, center;
+  background-size: 320% 100%, 100% 100%;
+  filter: var(--foil-filter);
+  will-change: background-position;
+}
+.foil-film {
+  z-index: 1;
+  background-image:
+    radial-gradient(at 16% 28%, #ff46b41a 0%, #ff46b40a 18%, #0000 48%),
+    radial-gradient(at 66% 18%, #00dcff1a 0%, #00dcff0a 20%, #0000 52%),
+    radial-gradient(at 78% 70%, #50ffbe1a 0%, #50ffbe0a 22%, #0000 56%),
+    radial-gradient(at 38% 82%, #965aff1a 0%, #965aff0a 18%, #0000 52%);
+  background-position:
+    calc(var(--foil-shift) * -0.2) calc(var(--foil-y-shift) * 0.3),
+    calc(var(--foil-shift) * 0.5) calc(var(--foil-y-shift) * -0.2),
+    calc(var(--foil-shift) * -0.4) calc(var(--foil-y-shift) * 0.5),
+    calc(var(--foil-shift) * 0.35) calc(var(--foil-y-shift) * 0.25);
+  background-size: 150% 150%, 160% 160%, 145% 145%, 155% 155%;
+  filter: blur(0.4px) saturate(1.35);
+  mix-blend-mode: screen;
+  opacity: var(--film-opacity);
+  will-change: background-position;
+}
+.foil-pearl {
+  z-index: 2;
+  background:
+    radial-gradient(ellipse at calc(var(--glare-x) * 0.9) calc(var(--glare-y) * 0.85), #e0e9f07a 0%, #cdd9e22e 22%, transparent 54%),
+    linear-gradient(112deg, #dce6ee52 0%, #dce6ee00 28%, #546c8033 48%, #d7e2eb4d 72%, #d7e2eb0a 100%),
+    linear-gradient(28deg, #bcdaff1f 0%, transparent 34%, #ffdff41f 58%, transparent 100%);
+  background-repeat: no-repeat;
+  background-position: center, var(--foil-shift) center, var(--foil-shift) center;
+  background-size: 100% 100%, 180% 100%, 160% 100%;
+  filter: var(--highlight-filter);
+  mix-blend-mode: soft-light;
+  opacity: var(--pearl-opacity);
+  will-change: background-position;
+}
+.foil-content {
+  z-index: 3;
+}
+.foil-shine {
+  z-index: 4;
+  background:
+    linear-gradient(var(--shine-angle), transparent 0%, #dce6ee0a 12%, #e2ebf27a 31%, #2534423d 52%, #007cff14 64%, #ff009314 74%, #dfe8ef47 88%, transparent 100%),
+    linear-gradient(112deg, transparent 0%, transparent 30%, #00dcff0a 34%, #50ffbe0a 38%, #beff5008 42%, transparent 45%, #ffe64608 52%, #ff46b40d 59%, transparent 66%, #965aff0d 73%, #3c78ff0a 78%, transparent 84%);
+  background-repeat: no-repeat;
+  background-position: calc(50% + (var(--pointer-x) - 50%) * 0.35) calc(50% + (var(--pointer-y) - 50%) * 0.24);
+  background-size: 220% 100%;
+  filter: blur(0.25px) var(--highlight-filter);
+  mix-blend-mode: screen;
+  opacity: calc(var(--shine-opacity) * var(--shine-opacity-scale));
+  will-change: background-position, opacity;
+}
+.foil-glare {
+  z-index: 5;
+  background: radial-gradient(circle at var(--glare-x) var(--glare-y), #e2ebf257 0%, #cddae424 9%, #e2edf614 22%, transparent 36%);
+  filter: var(--highlight-filter);
+  mix-blend-mode: screen;
+  opacity: var(--glare-opacity);
+  will-change: background;
+  background-repeat: no-repeat;
+}
