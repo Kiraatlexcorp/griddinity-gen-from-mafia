@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { Box, Check, ChevronDown, Grid3x3, Save, Trash2 } from "lucide-react";
+import { Box, Check, ChevronDown, Grid3x3, PanelTop, Save, Trash2 } from "lucide-react";
 import { SectionCard } from "@/components/studio/section-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -75,7 +75,7 @@ export function PresetsCard({
   const selection = presetSelection(state, picked, saved);
   const selectedPack = selection?.picked.source === "pack" ? selection.picked.id : null;
   const selectedSaved = selection?.picked.source === "saved" ? selection.picked.id : null;
-  const TriggerIcon = state.tab === "bin" ? Box : Grid3x3;
+  const TriggerIcon = state.tab === "bin" ? Box : state.tab === "lid" ? PanelTop : Grid3x3;
 
   function load(source: PickedPreset["source"], id: string, label: string, query: string) {
     const next = decodeState(query);
@@ -187,7 +187,8 @@ export function PresetsCard({
           {saved.length > 0 ? (
             <ul className="flex flex-col gap-1" aria-label="Saved designs">
               {saved.map((item) => {
-                const tab = new URLSearchParams(item.query).get("tab") === "bin" ? "Bin" : "Baseplate";
+                const rawTab = new URLSearchParams(item.query).get("tab");
+                const tab = rawTab === "bin" ? "Bin" : rawTab === "lid" ? "Lid" : "Baseplate";
                 return (
                   <li key={item.name} className="flex items-center gap-1">
                     <Button
@@ -197,7 +198,13 @@ export function PresetsCard({
                       aria-current={selectedSaved === item.name ? "true" : undefined}
                       onClick={() => load("saved", item.name, item.name, item.query)}
                     >
-                      {tab === "Bin" ? <Box data-icon="inline-start" /> : <Grid3x3 data-icon="inline-start" />}
+                      {tab === "Bin" ? (
+                        <Box data-icon="inline-start" />
+                      ) : tab === "Lid" ? (
+                        <PanelTop data-icon="inline-start" />
+                      ) : (
+                        <Grid3x3 data-icon="inline-start" />
+                      )}
                       <span className="truncate font-medium">{item.name}</span>
                       {selectedSaved === item.name ? <Check aria-label="Selected" className="text-highlight" /> : null}
                       <span className="ml-auto text-xs text-muted-foreground">{tab}</span>

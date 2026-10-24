@@ -31,7 +31,9 @@ import {
   type BaseplateParams,
   type BinParams,
   type LabelPosition,
+  type LidParams,
 } from "@/lib/params";
+import { lidHeight } from "@/lib/geometry/build";
 import {
   BED_PRESETS,
   PITCH_MM,
@@ -645,6 +647,68 @@ export function BinControls({
             value={bin.screws}
             options={HOLES}
             onChange={(screws) => patch({ screws })}
+          />
+        </FieldGroup>
+      </SectionCard>
+    </div>
+  );
+}
+
+export function LidControls({
+  bin,
+  lid,
+  onBinChange,
+  onChange,
+}: {
+  bin: BinParams;
+  lid: LidParams;
+  onBinChange: (bin: BinParams) => void;
+  onChange: (lid: LidParams) => void;
+}) {
+  const foot = binFootprint(bin.gridX, bin.gridY);
+  return (
+    <div className="flex flex-col gap-3">
+      <SectionCard id="lid" title="Lid">
+        <p className="font-mono text-sm tabular-nums">
+          {formatMm(bin.gridX * PITCH_MM)} × {formatMm(bin.gridY * PITCH_MM)} × {formatMm(lidHeight())} mm
+        </p>
+        <FieldDescription>
+          Sits in the bin&apos;s stacking lip ({formatMm(foot.width)} × {formatMm(foot.depth)} mm bin). The top is a
+          baseplate grid, so another bin stacks on it. Width and depth are shared with the bin.
+        </FieldDescription>
+        {bin.lip === "none" ? (
+          <Alert>
+            <AlertTitle>Bin has no stacking lip</AlertTitle>
+            <AlertDescription>The lid seats in the lip. Turn the bin&apos;s lip on so it stays put.</AlertDescription>
+          </Alert>
+        ) : null}
+        <FieldGroup className="gap-4">
+          <MeasureField
+            label="Width"
+            suffix="CELLS"
+            value={bin.gridX}
+            min={1}
+            max={12}
+            step={1}
+            digits={0}
+            onChange={(gridX) => onBinChange({ ...bin, gridX: Math.round(gridX) })}
+          />
+          <MeasureField
+            label="Depth"
+            suffix="CELLS"
+            value={bin.gridY}
+            min={1}
+            max={12}
+            step={1}
+            digits={0}
+            onChange={(gridY) => onBinChange({ ...bin, gridY: Math.round(gridY) })}
+          />
+          <SwitchField
+            id="lid-notch"
+            label="Finger notch"
+            hint="A scallop in the front edge to lift the lid off."
+            checked={lid.notch}
+            onChange={(notch) => onChange({ ...lid, notch })}
           />
         </FieldGroup>
       </SectionCard>

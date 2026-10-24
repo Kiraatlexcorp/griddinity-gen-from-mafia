@@ -2,14 +2,16 @@
 
 import { MafiaLogo } from "@/components/studio/mafia-logo";
 import { useEffect, useState } from "react";
-import { Box, Download, Grid3x3, Link2, Moon, Sun } from "lucide-react";
+import { Box, Download, Grid3x3, Link2, Moon, PanelTop, Sun } from "lucide-react";
 import type * as React from "react";
 import { PITCH_MM } from "@/lib/spec";
-import { BinControls, PlateControls } from "@/components/studio/controls";
+import { BinControls, LidControls, PlateControls } from "@/components/studio/controls";
+import { lidHeight } from "@/lib/geometry/build";
 import { PresetsCard } from "@/components/studio/presets-card";
 import type { PickedPreset } from "@/lib/presets";
 import { Preview } from "@/components/studio/preview";
 import { useGeometry } from "@/components/studio/use-geometry";
+import type { GeometryJob } from "@/lib/geometry/protocol";
 import { QualityToggle, usePreviewQuality } from "@/components/studio/quality-toggle";
 import { geometryQuality } from "@/lib/preview-quality";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -89,10 +91,12 @@ export function Studio() {
   const [exportError, setExportError] = useState<string | null>(null);
 
   const [previewQuality, setPreviewQuality] = usePreviewQuality();
-  const job =
+  const job: GeometryJob =
     state.tab === "bin"
-      ? ({ kind: "bin", params: state.bin } as const)
-      : ({ kind: "baseplate", params: state.plate } as const);
+      ? { kind: "bin", params: state.bin }
+      : state.tab === "lid"
+        ? { kind: "lid", gridX: state.bin.gridX, gridY: state.bin.gridY, params: state.lid }
+        : { kind: "baseplate", params: state.plate };
   const { parts, status, ms, error, exportMesh } = useGeometry(
     job,
     geometryQuality(previewQuality),
@@ -124,7 +128,9 @@ export function Studio() {
   const stem =
     state.tab === "bin"
       ? `mafia-bin-${state.bin.gridX}x${state.bin.gridY}x${state.bin.gridZ}`
-      : "error" in plan
+      : state.tab === "lid"
+        ? `mafia-lid-${state.bin.gridX}x${state.bin.gridY}`
+        : "error" in plan
         ? "mafia-baseplate"
         : `mafia-baseplate-${plan.gridX}x${plan.gridY}`;
 
@@ -146,8 +152,43 @@ export function Studio() {
 
   const failed = "error" in plan;
   const oversize = foot.width > state.plate.bed || foot.depth > state.plate.bed;
+  const lidW = state.bin.gridX * PITCH_MM;
+  const lidD = state.bin.gridY * PITCH_MM;
+  const lidOversize = lidW > state.plate.bed || lidD > state.plate.bed;
+  const lidStats: Stat[] = [
+    {
+      label: "Outer size",
+      value: `${formatMm(lidW)} × ${formatMm(lidD)} mm`,
+      badge: "top grid",
+      note: "Footprint",
+      hint: "Full pitch on top; the plug matches the bin",
+    },
+    {
+      label: "Grid units",
+      value: `${state.bin.gridX} × ${state.bin.gridY}`,
+      badge: `${PITCH_MM} mm pitch`,
+      note: `${state.bin.gridX * state.bin.gridY} sockets`,
+      hint: "Shared with the bin",
+    },
+    {
+      label: "Height",
+      value: `${formatMm(lidHeight())} mm`,
+      badge: state.lid.notch ? "notch" : "no notch",
+      note: state.lid.notch ? "With finger notch" : "Plain edge",
+      hint: "Plug, plate and sockets",
+    },
+    {
+      label: "Bed fit",
+      value: lidOversize ? "Too wide" : "Fits",
+      badge: `${formatMm(state.plate.bed)} mm bed`,
+      note: lidOversize ? "Overhangs the bed" : "on one bed",
+      hint: "Prints plug side down",
+    },
+  ];
   const stats: Stat[] =
-    state.tab === "baseplate"
+    state.tab === "lid"
+      ? lidStats
+      : state.tab === "baseplate"
       ? [
           {
             label: "Plate size",
@@ -228,7 +269,7 @@ export function Studio() {
           <Tabs
             value={state.tab}
             onValueChange={(value) => {
-              if (value === "bin" || value === "baseplate") {
+              if (value === "bin" || value === "baseplate" || value === "lid") {
                 setState((current) => ({ ...current, tab: value }));
               }
             }}
@@ -241,6 +282,10 @@ export function Studio() {
               <TabsTrigger value="bin">
                 <Box data-icon="inline-start" />
                 Bin
+              </TabsTrigger>
+              <TabsTrigger value="lid">
+                <PanelTop data-icon="inline-start" />
+                Lid
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -260,6 +305,13 @@ export function Studio() {
                 plate={state.plate}
                 onChange={(plate) => setState((current) => ({ ...current, plate }))}
               />
+            ) : state.tab === "lid" ? (
+              <LidControls
+                bin={state.bin}
+                lid={state.lid}
+                onBinChange={(bin) => setState((current) => ({ ...current, bin }))}
+                onChange={(lid) => setState((current) => ({ ...current, lid }))}
+              />
             ) : (
               <BinControls
                 bin={state.bin}
@@ -277,7 +329,7 @@ export function Studio() {
           <SidebarTrigger className="-ml-1" />
           <span aria-hidden className="mx-1 h-4 w-px bg-border" />
           <span className="font-heading text-base font-semibold">
-            {state.tab === "bin" ? "Bin" : "Baseplate"}
+            {state.tab === "bin" ? "Bin" : state.tab === "lid" ? "Lid" : "Baseplate"}
           </span>
           <span aria-hidden className="mx-2 hidden h-4 w-px bg-border lg:block" />
           <StatBar stats={stats} inline />
