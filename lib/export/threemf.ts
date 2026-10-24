@@ -6,9 +6,21 @@ export type ArrangedPart = {
   x: number;
   y: number;
   z: number;
+  /** 0-based build plate the part landed on. */
+  plate: number;
 };
 
-/** Shelf-pack parts so a slicer opens them side by side instead of stacked. */
+/** Bambu Studio lays plates out in a square-ish grid, one plate plus 20% apart. */
+export function plateOrigin(plate: number, plates: number, bed: number) {
+  const columns = Math.max(1, Math.ceil(Math.sqrt(plates)));
+  const stride = bed * 1.2;
+  return { x: (plate % columns) * stride, y: -Math.floor(plate / columns) * stride };
+}
+
+/**
+ * Shelf-pack parts onto bed-sized plates so a slicer opens them side by side
+ * instead of stacked. When a plate is full the next part starts a new plate.
+ */
 export function arrangeOnBed(
   parts: MeshPart[],
   bed: number,
@@ -17,7 +29,8 @@ export function arrangeOnBed(
   let cursorX = 0;
   let cursorY = 0;
   let rowDepth = 0;
-  return parts.map((part) => {
+  let plate = 0;
+  const local = parts.map((part) => {
     const bounds = boundsOf(part);
     const width = bounds.maxX - bounds.minX;
     const depth = bounds.maxY - bounds.minY;
@@ -26,15 +39,27 @@ export function arrangeOnBed(
       cursorX = 0;
       rowDepth = 0;
     }
+    if (cursorY > 0 && cursorY + depth > bed + 0.1) {
+      plate += 1;
+      cursorX = 0;
+      cursorY = 0;
+      rowDepth = 0;
+    }
     const placed = {
       part,
       x: cursorX - bounds.minX,
       y: cursorY - bounds.minY,
       z: -bounds.minZ,
+      plate,
     };
     cursorX += width + gap;
     rowDepth = Math.max(rowDepth, depth);
     return placed;
+  });
+  const plates = plate + 1;
+  return local.map((item) => {
+    const origin = plateOrigin(item.plate, plates, bed);
+    return { ...item, x: item.x + origin.x, y: item.y + origin.y };
   });
 }
 
@@ -62,6 +87,7 @@ export function boundsOf(part: MeshPart) {
 
 export function meshTo3mf(parts: MeshPart[], bed: number, title: string): Uint8Array {
   const arranged = arrangeOnBed(parts, bed);
+  const plates = arranged.reduce((most, item) => Math.max(most, item.plate + 1), 1);
   const objects = arranged
     .map((item, index) => objectXml(index + 1, item.part))
     .join("\n");
@@ -99,9 +125,40 @@ ${items}
       "[Content_Types].xml": strToU8(contentTypes),
       "_rels/.rels": strToU8(relationships),
       "3D/3dmodel.model": strToU8(model),
+      ...(plates > 1 ? { "Metadata/model_settings.config": strToU8(plateSettings(arranged)) } : {}),
     },
     { level: 6 },
   );
+}
+
+/** Bambu Studio / OrcaSlicer plate assignment, one <plate> per bed. */
+function plateSettings(arranged: ArrangedPart[]) {
+  const plates = arranged.reduce((most, item) => Math.max(most, item.plate + 1), 1);
+  const objects = arranged
+    .map((item, index) => `  <object id="${index + 1}">
+    <metadata key="name" value="${escapeXml(item.part.name)}"/>
+  </object>`)
+    .join("\n");
+  const blocks = Array.from({ length: plates }, (_, plate) => {
+    const instances = arranged
+      .map((item, index) => (item.plate === plate ? `    <model_instance>
+      <metadata key="object_id" value="${index + 1}"/>
+      <metadata key="instance_id" value="0"/>
+    </model_instance>` : null))
+      .filter(Boolean)
+      .join("\n");
+    return `  <plate>
+    <metadata key="plater_id" value="${plate + 1}"/>
+    <metadata key="plater_name" value="Plate ${plate + 1}"/>
+${instances}
+  </plate>`;
+  }).join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<config>
+${objects}
+${blocks}
+</config>
+`;
 }
 
 function objectXml(id: number, part: MeshPart) {

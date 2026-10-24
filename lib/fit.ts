@@ -353,3 +353,27 @@ export function planDrawer(widthMm: number, depthMm: number, pad: boolean): Draw
       : { unit: "mm", width: fit.gridW, depth: fit.gridD, pad: false },
   };
 }
+
+/**
+ * Cell counts per piece when a bin (or lid) is wider than the bed: as few
+ * pieces as possible, as even as possible, every seam on a cell line so each
+ * piece keeps whole base pads.
+ */
+export function splitBinCells(cells: number, pitch: number, bed: number): number[] {
+  const most = Math.floor((bed + 0.5 + 1e-6) / pitch);
+  if (most < 1) throw new Error("Bed is smaller than one grid cell.");
+  const count = Math.max(1, Math.ceil(cells / most));
+  const base = Math.floor(cells / count);
+  const extra = cells - base * count;
+  return Array.from({ length: count }, (_, index) => base + (index < extra ? 1 : 0));
+}
+
+export type BinSplit = { pitch: number; columns: number[]; rows: number[]; pieces: number };
+
+/** How a gridX × gridY bin cuts into bed-sized pieces (1 piece when it fits). */
+export function planBinSplit(gridX: number, gridY: number, half: boolean | undefined, bed: number): BinSplit {
+  const pitch = cellPitch(half);
+  const columns = splitBinCells(Math.round((gridX * PITCH_MM) / pitch), pitch, bed);
+  const rows = splitBinCells(Math.round((gridY * PITCH_MM) / pitch), pitch, bed);
+  return { pitch, columns, rows, pieces: columns.length * rows.length };
+}

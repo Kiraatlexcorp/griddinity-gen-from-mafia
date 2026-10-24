@@ -4,6 +4,8 @@ import {
   binFootprint,
   fitDividers,
   planBaseplate,
+  planBinSplit,
+  type BinSplit,
 } from "@/lib/fit";
 import { cleanLabelText, textPixels, textRects } from "@/lib/geometry/pixel-font";
 import type { BinElement, InnerWall } from "@/lib/elements";
@@ -722,18 +724,69 @@ export function buildBin(
   wasm: ManifoldToplevel,
   params: BinParams,
   quality: Quality,
+  bed?: number,
 ): MeshPart[] {
   const solid = buildBinSolid(wasm, params, quality);
+  const name = `bin-${params.gridX}x${params.gridY}x${params.gridZ}`;
   try {
-    return [
-      meshFromSolid(
-        solid,
-        `bin-${params.gridX}x${params.gridY}x${params.gridZ}`,
-      ),
-    ];
+    if (!bed) return [meshFromSolid(solid, name)];
+    return splitToBed(wasm, solid, name, planBinSplit(params.gridX, params.gridY, params.half, bed));
   } finally {
     drop(solid);
   }
+}
+
+/** Gap between split pieces in the preview, so the seams read. */
+const SPLIT_PREVIEW_GAP_MM = 4;
+
+/**
+ * Cut a bin or lid on cell lines into bed-sized pieces. Each piece keeps whole
+ * base pads; glue the seams after printing.
+ */
+export function splitToBed(
+  wasm: ManifoldToplevel,
+  solid: Manifold,
+  name: string,
+  split: BinSplit,
+): MeshPart[] {
+  if (split.pieces <= 1) return [meshFromSolid(solid, name)];
+  const box = solid.boundingBox();
+  const lines = (counts: number[], lo: number, hi: number) => {
+    const edges = [lo - 1];
+    let cell = 0;
+    for (const count of counts.slice(0, -1)) {
+      cell += count;
+      edges.push(cell * split.pitch);
+    }
+    edges.push(hi + 1);
+    return edges;
+  };
+  const xs = lines(split.columns, box.min[0], box.max[0]);
+  const ys = lines(split.rows, box.min[1], box.max[1]);
+  const parts: MeshPart[] = [];
+  for (let row = 0; row < split.rows.length; row += 1) {
+    for (let column = 0; column < split.columns.length; column += 1) {
+      const cutter = wasm.Manifold.cube(
+        [xs[column + 1] - xs[column], ys[row + 1] - ys[row], box.max[2] - box.min[2] + 2],
+        false,
+      ).translate(xs[column], ys[row], box.min[2] - 1);
+      const piece = solid.intersect(cutter);
+      try {
+        parts.push(
+          meshFromSolid(
+            piece,
+            `${name}-piece-${row + 1}-${column + 1}`,
+            column * SPLIT_PREVIEW_GAP_MM,
+            row * SPLIT_PREVIEW_GAP_MM,
+          ),
+        );
+      } finally {
+        drop(piece);
+        drop(cutter);
+      }
+    }
+  }
+  return parts;
 }
 
 /**
@@ -846,10 +899,13 @@ export function buildLid(
   params: LidParams,
   quality: Quality,
   half = false,
+  bed?: number,
 ): MeshPart[] {
   const solid = buildLidSolid(wasm, gridX, gridY, params, quality, half);
+  const name = `lid-${gridX}x${gridY}`;
   try {
-    return [meshFromSolid(solid, `lid-${gridX}x${gridY}`)];
+    if (!bed) return [meshFromSolid(solid, name)];
+    return splitToBed(wasm, solid, name, planBinSplit(gridX, gridY, half, bed));
   } finally {
     drop(solid);
   }
@@ -1150,7 +1206,7 @@ export function buildBaseplate(
 
 /** Each part (baseplate, bin, lid) builds and exports on its own. */
 export function buildJob(wasm: ManifoldToplevel, job: GeometryJob, quality: Quality): MeshPart[] {
-  if (job.kind === "bin") return buildBin(wasm, job.params, quality);
-  if (job.kind === "lid") return buildLid(wasm, job.gridX, job.gridY, job.params, quality, job.half);
+  if (job.kind === "bin") return buildBin(wasm, job.params, quality, job.bed);
+  if (job.kind === "lid") return buildLid(wasm, job.gridX, job.gridY, job.params, quality, job.half, job.bed);
   return buildBaseplate(wasm, job.params, quality);
 }
