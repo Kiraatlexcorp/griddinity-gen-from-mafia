@@ -47,27 +47,59 @@ type Orbit = {
   maxDistance: number;
 };
 
+type Hover = { part: MeshPart; x: number; y: number } | null;
+
 function PartMesh({
   part,
   color,
   quality,
   onPick,
+  edges,
+  hovered,
+  onHover,
 }: {
   part: MeshPart;
   color: string;
   quality: PreviewQuality;
   onPick?: (part: MeshPart) => void;
+  /** Thin outline so dark parts keep their shape. */
+  edges?: boolean;
+  hovered?: boolean;
+  onHover?: (hover: Hover) => void;
 }) {
   const geometry = useMemo(
     () => previewGeometry(part, quality),
     [part, quality],
   );
+  const edgeGeometry = useMemo(() => (edges ? new THREE.EdgesGeometry(geometry, 28) : null), [geometry, edges]);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
+  useEffect(() => () => edgeGeometry?.dispose(), [edgeGeometry]);
+  const lightEdge = new THREE.Color(color).getHSL({ h: 0, s: 0, l: 0 }).l < 0.35;
+  const emissive = hovered ? (lightEdge ? "#5a5a5a" : "#3a3a3a") : "#000000";
 
   return (
+    <group>
+    {edgeGeometry ? (
+      <lineSegments geometry={edgeGeometry} renderOrder={1}>
+        <lineBasicMaterial
+          color={hovered ? "#ffffff" : lightEdge ? "#ffffff" : "#000000"}
+          transparent
+          opacity={hovered ? 0.9 : lightEdge ? 0.22 : 0.18}
+          depthWrite={false}
+        />
+      </lineSegments>
+    ) : null}
     <mesh
       geometry={geometry}
+      onPointerMove={
+        onHover
+          ? (event) => {
+              event.stopPropagation();
+              onHover({ part, x: event.nativeEvent.offsetX, y: event.nativeEvent.offsetY });
+            }
+          : undefined
+      }
       onClick={
         onPick
           ? (event) => {
@@ -79,11 +111,19 @@ function PartMesh({
           : undefined
       }
       onPointerOver={onPick ? () => (document.body.style.cursor = "pointer") : undefined}
-      onPointerOut={onPick ? () => (document.body.style.cursor = "") : undefined}
+      onPointerOut={
+        onPick
+          ? () => {
+              document.body.style.cursor = "";
+              onHover?.(null);
+            }
+          : undefined
+      }
     >
       {quality === "high" ? (
         <meshPhysicalMaterial
           color={color}
+          emissive={emissive}
           roughness={0.58}
           metalness={0.02}
           clearcoat={0.12}
@@ -94,6 +134,7 @@ function PartMesh({
       ) : (
         <meshStandardMaterial
           color={color}
+          emissive={emissive}
           roughness={0.72}
           metalness={0.04}
           flatShading
@@ -101,6 +142,7 @@ function PartMesh({
         />
       )}
     </mesh>
+    </group>
   );
 }
 
@@ -263,12 +305,16 @@ export function Preview({
   toolbar,
   stats,
   paint,
-  overlay,
 }: {
   /** Paint mode: colour parts by their AMS slot and pick them on click. */
-  paint?: { palette: string[]; colorOf: (part: MeshPart) => string | null; onPick: (part: MeshPart) => void };
-  /** Floating panel along the top centre of the viewer. */
-  overlay?: React.ReactNode;
+  paint?: {
+    palette: string[];
+    /** Preview print: final colours only, no grid, outlines or overlays. */
+    print?: boolean;
+    labelOf: (part: MeshPart) => string | null;
+    colorOf: (part: MeshPart) => string | null;
+    onPick: (part: MeshPart) => void;
+  };
   /** Overlay strip along the bottom right of the viewer. */
   stats?: React.ReactNode;
   parts: MeshPart[];
@@ -282,6 +328,9 @@ export function Preview({
   const [bottomTick, setBottomTick] = useState(0);
   const [quad, setQuad] = useState(false);
   const [homeTick, setHomeTick] = useState(0);
+  const [hover, setHover] = useState<Hover>(null);
+  const printing = Boolean(paint?.print);
+  const hoverLabel = paint && hover ? paint.labelOf(hover.part) : null;
   const colors = dark ? FILAMENT_DARK : FILAMENT;
   const badge =
     status === "rendering"
@@ -300,9 +349,11 @@ export function Preview({
       gl={{ alpha: true, antialias: quality === "high" }}
       camera={{ fov: 32, position: [180, 130, 190], near: 0.1, far: 5000 }}
     >
-      <ambientLight intensity={0.72} />
-      <directionalLight position={[80, 140, 60]} intensity={1.15} />
-      <directionalLight position={[-70, 40, -40]} intensity={0.35} />
+      {/* Brighter rig in paint view so charcoal and other dark slots keep their form. */}
+      <ambientLight intensity={paint ? 1.05 : 0.72} />
+      {paint ? <hemisphereLight args={["#ffffff", "#8a8a8a", 0.7]} /> : null}
+      <directionalLight position={[80, 140, 60]} intensity={paint ? 1.5 : 1.15} />
+      <directionalLight position={[-70, 40, -40]} intensity={paint ? 0.7 : 0.35} />
       {quality === "high" ? (
         <Environment resolution={64} frames={1}>
           <Lightformer
@@ -328,7 +379,7 @@ export function Preview({
           />
         </Environment>
       ) : null}
-      <GroundGrid
+      {printing ? null : <GroundGrid
         args={[2400, 2400]}
         cellSize={42}
         cellThickness={0.55}
@@ -340,14 +391,17 @@ export function Preview({
         fadeStrength={1.4}
         infiniteGrid
         position={[0, -0.25, 0]}
-      />
+      />}
       {parts.map((part, index) => (
         <PartMesh
           key={part.name}
           part={part}
           quality={quality}
           color={paint?.colorOf(part) ?? colors[index % colors.length]}
-          onPick={paint?.onPick}
+          onPick={paint && !printing ? paint.onPick : undefined}
+          edges={Boolean(paint) && !printing}
+          hovered={!printing && hover?.part.name === part.name}
+          onHover={paint && !printing ? setHover : undefined}
         />
       ))}
       <Fit parts={parts} view={view} home={homeTick} />
@@ -359,7 +413,7 @@ export function Preview({
         minPolarAngle={0.02}
       />
       {view === "perspective" ? <BottomView tick={bottomTick} /> : null}
-      {view === "perspective" ? (
+      {view === "perspective" && !printing ? (
         <ViewGizmo onHome={() => setHomeTick((tick) => tick + 1)} />
       ) : null}
     </Canvas>
@@ -381,8 +435,17 @@ export function Preview({
       ) : (
         scene("perspective")
       )}
-      <CropMarks />
-      <div className="absolute bottom-4 left-4 flex items-center gap-2">
+      {printing ? null : <CropMarks />}
+      {hoverLabel && hover && !quad ? (
+        <div
+          role="tooltip"
+          className="pointer-events-none absolute z-10 rounded-md border border-border bg-background/95 px-2 py-1 text-xs font-medium shadow-sm"
+          style={{ left: hover.x + 14, top: hover.y + 14 }}
+        >
+          {hoverLabel}
+        </div>
+      ) : null}
+      <div className={printing ? "hidden" : "absolute bottom-4 left-4 flex items-center gap-2"}>
         {toolbar}
         <button
           type="button"
@@ -415,15 +478,12 @@ export function Preview({
           {quad ? "Single" : "Quad"}
         </button>
       </div>
-      {overlay ? (
-        <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-3">{overlay}</div>
-      ) : null}
-      {stats ? (
+      {stats && !printing ? (
         <div className="pointer-events-none absolute right-4 bottom-4 max-w-[min(60%,32rem)]">
           {stats}
         </div>
       ) : null}
-      {badge ? (
+      {badge && !printing ? (
         <div className="pointer-events-none absolute top-3 right-4 font-mono text-[10px] tracking-[0.18em] text-muted-foreground">
           {badge}
         </div>

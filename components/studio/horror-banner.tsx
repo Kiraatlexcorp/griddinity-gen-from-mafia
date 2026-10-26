@@ -27,17 +27,30 @@ function GithubMark(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-/** Banner copy: first line on the server, a random one after mount. */
+/** Flat GitHub-style notice bar shared by every banner: grey fill, 1px border, one line. */
+export const BAR_CLASS =
+  "flex min-h-8 items-center gap-2 rounded-md border border-neutral-200 bg-neutral-50 py-1 pr-1 pl-3 text-xs text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300";
+
+const ROTATE_MS = 7000;
+
+/** One rotating line (never wraps, ellipsis when narrow) and a GitHub link. */
 export function HorrorBanner() {
-  const [line, setLine] = useState<string>(HORROR_LINES[0]);
+  const [index, setIndex] = useState(0);
   useEffect(() => {
-    // Picked after hydration so server and client markup match.
+    // Random start picked after hydration so server and client markup match.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLine(HORROR_LINES[Math.floor(Math.random() * HORROR_LINES.length)]);
+    setIndex(Math.floor(Math.random() * HORROR_LINES.length));
+    const timer = window.setInterval(() => setIndex((value) => (value + 1) % HORROR_LINES.length), ROTATE_MS);
+    return () => window.clearInterval(timer);
   }, []);
+  const line = HORROR_LINES[index];
   return (
-    <div className="flex h-full items-center gap-1.5 pr-1 pl-3">
-      <p className="min-w-0 flex-1 truncate text-center font-heading text-xs leading-none font-semibold tracking-tight text-foreground/90" title={line}>
+    <div data-testid="horror-banner" className={BAR_CLASS}>
+      <p
+        aria-live="polite"
+        className="min-w-0 flex-1 truncate text-[11px] leading-5 font-medium whitespace-nowrap sm:text-xs"
+        title={line}
+      >
         {line}
       </p>
       <a
@@ -45,9 +58,9 @@ export function HorrorBanner() {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Gridfinity Studio on GitHub (opens in a new tab)"
-        className="flex size-6 shrink-0 items-center justify-center rounded-full text-foreground/80 transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        className="flex size-6 shrink-0 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-200 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
       >
-        <GithubMark className="size-3.5" />
+        <GithubMark className="size-4" />
       </a>
     </div>
   );
