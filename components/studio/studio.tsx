@@ -35,7 +35,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
-import { download3mf, downloadPainted3mf, downloadStls } from "@/lib/export/download";
+import { download3mf, downloadPainted3mf, downloadA1Presets, downloadProject3mf, downloadStls } from "@/lib/export/download";
 import { binFootprint, binHeight, planBaseplate, planBinSplit } from "@/lib/fit";
 import {
   decodeState,
@@ -94,7 +94,7 @@ export function Studio() {
   const [picked, setPicked] = useState<PickedPreset | null>(null);
   const [copied, setCopied] = useState(false);
   const { toast, show: showToast } = useToast();
-  const [exporting, setExporting] = useState<null | "stl" | "3mf">(null);
+  const [exporting, setExporting] = useState<null | "stl" | "3mf" | "project">(null);
   const [exportError, setExportError] = useState<string | null>(null);
 
   const [previewQuality, setPreviewQuality] = usePreviewQuality();
@@ -160,6 +160,35 @@ export function Studio() {
         download3mf(await exportMesh(), state.plate.bed, stem, stem);
       }
       showToast(`${stem}.${kind} downloaded`);
+    } catch (caught) {
+      setExportError(caught instanceof Error ? caught.message : "Export failed.");
+    } finally {
+      setExporting(null);
+    }
+  }
+
+  async function saveProject() {
+    setExporting("project");
+    setExportError(null);
+    try {
+      const p = paint.on;
+      const base = await exportMesh({ kind: "baseplate", params: state.plate, paint: p });
+      const bin = await exportMesh({ kind: "bin", params: state.bin, bed: state.plate.bed, paint: p });
+      const lid = await exportMesh({ kind: "lid", gridX: state.bin.gridX, gridY: state.bin.gridY, half: state.bin.half, bed: state.plate.bed, params: state.lid, paint: p });
+      const infill = { sparse_infill_density: "15%" };
+      downloadProject3mf(
+        [
+          { name: "Baseplate", parts: base, settings: { wall_loops: "2", ...infill } },
+          { name: "Bin", parts: bin, settings: { wall_loops: "2", ...infill } },
+          { name: "Lid", parts: lid, settings: { wall_loops: "3", ...infill } },
+        ],
+        paint.slots,
+        paint.palette,
+        state.plate.bed,
+        "acmie-project",
+        "acmie-project",
+      );
+      showToast("acmie-project.3mf downloaded");
     } catch (caught) {
       setExportError(caught instanceof Error ? caught.message : "Export failed.");
     } finally {
@@ -278,7 +307,7 @@ export function Studio() {
           },
         ];
 
-  const exportIcon = (kind: "stl" | "3mf") =>
+  const exportIcon = (kind: "stl" | "3mf" | "project") =>
     exporting === kind ? <Spinner data-icon="inline-start" /> : <Download data-icon="inline-start" />;
 
   return (
@@ -380,6 +409,25 @@ export function Studio() {
             <Button type="button" variant="outline" size="sm" className="rounded-full" disabled={!canExport} onClick={() => void save("3mf")}>
               {exportIcon("3mf")}
               3MF
+            </Button>
+            <Button type="button" variant="outline" size="sm" className="rounded-full" disabled={!canExport} aria-label="Download project (3 plates)" title="Baseplate, bin and lid on 3 plates, A1 profile embedded" onClick={() => void saveProject()}>
+              {exportIcon("project")}
+              <span className="hidden sm:inline">Project (3 plates)</span>
+              <span className="sm:hidden">Project</span>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="rounded-full"
+              aria-label="Download Bambu A1 print profile"
+              title="ⓘ Bambu Studio: New Project → A1 0.4 nozzle → File → Import → Import Configs"
+              onClick={() => void downloadA1Presets().catch((e: Error) => setExportError(e.message))}
+            >
+              <Download data-icon="inline-start" />
+              <span className="hidden xl:inline">Bambu A1 print profile</span>
+              <span className="xl:hidden">A1 profile</span>
+              <span aria-hidden className="text-muted-foreground">ⓘ</span>
             </Button>
           </div>
         </header>
