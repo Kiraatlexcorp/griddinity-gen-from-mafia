@@ -436,7 +436,7 @@
   border-color: transparent !important;
   background: transparent !important;
   box-shadow: none !important;
-  color: color-mix(in oklab, var(--foreground) 55%, transparent);
+  color: var(--muted-foreground);
   transition: color var(--duration-fast) var(--ease-smooth-out);
 }
 .motion-tabs [data-slot="tabs-trigger"]:hover,
@@ -720,3 +720,29 @@
 :root:not(.dark) .ctx-chip {
   box-shadow: 0 1px 1px rgb(0 0 0 / 0.06);
 }
+
+/* 3D-view suggestion pills: slow shifting gradient. */
+.suggest-pill {
+  border-radius: 9999px;
+  border: 1px solid oklch(0.8 0.05 280 / 0.6);
+  padding: 0.25rem 0.7rem;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: oklch(0.25 0.03 280);
+  background: linear-gradient(110deg, #fde7d2, #e4dcff, #d4ecff, #fde7d2);
+  background-size: 300% 100%;
+  animation: suggest-shift 9s ease-in-out infinite alternate;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+  cursor: pointer;
+  transition: filter 150ms, transform 150ms;
+}
+.suggest-pill:hover { filter: brightness(1.04) saturate(1.2); transform: translateY(-1px); }
+.suggest-pill:focus-visible { outline: 2px solid oklch(0.6 0.15 280); outline-offset: 2px; }
+.dark .suggest-pill {
+  color: oklch(0.95 0.01 280);
+  border-color: oklch(0.5 0.06 280 / 0.6);
+  background-image: linear-gradient(110deg, #3b2a22, #2c2650, #1d3248, #3b2a22);
+}
+@keyframes suggest-shift { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+@media (prefers-reduced-motion: reduce) { .suggest-pill { animation: none; transition: none; } }

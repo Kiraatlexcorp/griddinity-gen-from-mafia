@@ -6,15 +6,15 @@ const REPO_URL = "https://github.com/Kiraatlexcorp/griddinity-gen-from-mafia";
 
 /** Original horror-flavoured print puns for the foil banner. One per page load. */
 export const HORROR_LINES = [
-  "Don't look under the bed. It's full of baseplates.",
+  "Don't look under the bed. Baseplates.",
   "Whatever you do, don't skip the brim.",
-  "The layer shift is coming from inside the printer.",
-  "Something is stacking in the dark… 42 mm at a time.",
-  "It was a quiet night. Then the nozzle started to ooze.",
-  "Every drawer has a secret. Yours is now organised.",
-  "Do not open the 3 a.m. print. It warped.",
-  "The bins are watching. They want a magnet.",
-  "They're coming from inside the drawer.",
+  "The layer shift is inside the printer.",
+  "Something stacks in the dark. 42 mm.",
+  "Quiet night. Then the nozzle oozed.",
+  "Every drawer has a secret. Now sorted.",
+  "Never open the 3 a.m. print. It warped.",
+  "The bins are watching. Want magnets.",
+  "The drawer hums at night. Bins inside.",
   "Don't open the bin. Seriously.",
   "Every screw has a home. Mwahaha.",
 ] as const;
@@ -27,13 +27,15 @@ function GithubMark(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+export const HALLOWEEN_LINE = "Pumpkin bins are in Presets. Boo.";
+
 /** Flat GitHub-style notice bar shared by every banner: grey fill, 1px border, one line. */
 export const BAR_CLASS =
   "flex min-h-8 items-center gap-2 rounded-md border border-neutral-200 bg-neutral-50 py-1 pr-1 pl-3 text-xs text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300";
 
 const ROTATE_MS = 7000;
 
-/** One rotating line (never wraps, ellipsis when narrow) and a GitHub link. */
+/** One rotating line (≤40 chars; shrinks, then wraps, never truncates) and a GitHub link. */
 export function HorrorBanner() {
   const [index, setIndex] = useState(0);
   useEffect(() => {
@@ -48,7 +50,7 @@ export function HorrorBanner() {
     <div data-testid="horror-banner" className={BAR_CLASS}>
       <p
         aria-live="polite"
-        className="min-w-0 flex-1 truncate text-[11px] leading-5 font-medium whitespace-nowrap sm:text-xs"
+        className="min-w-0 flex-1 text-[10.5px] leading-4 font-medium text-pretty sm:text-xs sm:leading-5"
         title={line}
       >
         {line}

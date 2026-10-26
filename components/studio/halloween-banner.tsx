@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { BAR_CLASS } from "@/components/studio/horror-banner";
+import { BAR_CLASS, HALLOWEEN_LINE } from "@/components/studio/horror-banner";
 import { cn } from "@/lib/utils";
 import { HALLOWEEN_DISMISS_KEY, halloweenActive } from "@/lib/halloween";
 
@@ -22,8 +22,8 @@ export function HalloweenBanner() {
       className={cn(BAR_CLASS, "mx-3 mt-3 shrink-0 lg:mx-5")}
     >
       <span aria-hidden className="text-sm">🎃</span>
-      <p className="min-w-0 flex-1 truncate text-[11px] leading-5 font-medium whitespace-nowrap sm:text-xs">
-        Halloween drop: pumpkin bins and a carved candy box are in Presets. Same base, spookier walls.
+      <p className="min-w-0 flex-1 text-[10.5px] leading-4 font-medium text-pretty sm:text-xs sm:leading-5">
+        {HALLOWEEN_LINE}
       </p>
       <button
         type="button"
