@@ -20,8 +20,9 @@ import { decodeState, encodeState, type StudioState } from "@/lib/params";
 import {
   designKey,
   PRESET_GROUPS,
-  PRESETS,
-  presetQuery,
+  applyPreset,
+  presetsForTab,
+  type Preset,
   presetSelection,
   type PickedPreset,
 } from "@/lib/presets";
@@ -91,6 +92,13 @@ export function PresetsCard({
   }
 
   /** Bring the ticked preset into view once the menu has opened and laid out. */
+  const tabPresets = presetsForTab(state.tab);
+
+  function loadPreset(preset: Preset) {
+    const next = applyPreset(state, preset);
+    onLoad(next, { source: "pack", id: preset.id, name: preset.name, key: designKey(next) });
+  }
+
   function scrollToPicked() {
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
@@ -161,18 +169,18 @@ export function PresetsCard({
               {custom ? <Check aria-label="Selected" className="mt-0.5 text-highlight" /> : null}
             </DropdownMenuItem>
           </DropdownMenuGroup>
-          {PRESET_GROUPS.map((group) => (
+          {PRESET_GROUPS.filter((group) => tabPresets.some((preset) => preset.group === group.id)).map((group) => (
             <DropdownMenuGroup key={group.id}>
               <DropdownMenuSeparator />
               <DropdownMenuLabel>{group.label}</DropdownMenuLabel>
-              {PRESETS.filter((preset) => preset.group === group.id).map((preset) => {
-                const Icon = preset.state.tab === "bin" ? Box : Grid3x3;
+              {tabPresets.filter((preset) => preset.group === group.id).map((preset) => {
+                const Icon = preset.state.tab === "bin" ? Box : preset.state.tab === "lid" ? PanelTop : Grid3x3;
                 return (
                   <DropdownMenuItem
                     key={preset.id}
                     className="items-start"
                     aria-current={selectedPack === preset.id ? "true" : undefined}
-                    onClick={() => load("pack", preset.id, preset.name, presetQuery(preset))}
+                    onClick={() => loadPreset(preset)}
                   >
                     <Icon className="mt-0.5" />
                     <span className="flex min-w-0 flex-1 flex-col">

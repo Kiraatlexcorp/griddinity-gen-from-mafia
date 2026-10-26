@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { ManifoldToplevel } from "manifold-3d";
 import { buildBaseplate, buildBinSolid } from "@/lib/geometry/build";
 import { loadManifold } from "@/lib/geometry/manifold";
-import { decodeState } from "@/lib/params";
+import { decodeState, DEFAULT_STATE } from "@/lib/params";
 import { PRESETS, presetQuery } from "@/lib/presets";
 import { deletePreset, readSaved, savePreset } from "@/lib/saved-presets";
 import { planBaseplate } from "@/lib/fit";
@@ -24,6 +24,10 @@ describe("built-in presets", () => {
   });
 
   it.each(PRESETS.map((preset) => [preset.name, preset] as const))("%s builds valid geometry", (_, preset) => {
+    if (preset.state.tab === "lid") {
+      expect(preset.state.bin).toEqual(DEFAULT_STATE.bin);
+      return;
+    }
     if (preset.state.tab === "bin") {
       const solid = buildBinSolid(wasm, preset.state.bin, "preview");
       expect(solid.status()).toBe(wasm.Manifold.cube([1, 1, 1]).status());

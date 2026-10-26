@@ -7,6 +7,8 @@ import {
   encodeState,
   type BaseplateParams,
   type BinParams,
+  type LidParams,
+  type StudioTab,
   type StudioState,
 } from "@/lib/params";
 import { PLATE_EDGES } from "@/lib/spec";
@@ -48,6 +50,11 @@ function plate(id: string, group: PresetGroup, name: string, tagline: string, pa
   };
 }
 
+/** Lid presets set only lid style (grip). Footprint always follows the current bin, so they never break fit. */
+function lid(id: string, group: PresetGroup, name: string, tagline: string, params: Partial<LidParams>): Preset {
+  return { id, group, name, tagline, state: { ...DEFAULT_STATE, tab: "lid", lid: { ...DEFAULT_LID, ...params } } };
+}
+
 const scoop = [{ id: 1, kind: "scoop" as const, wall: "front" as const }];
 
 export const PRESETS: Preset[] = [
@@ -69,6 +76,24 @@ export const PRESETS: Preset[] = [
   plate("a1-5x5", "classic", "5×5 A1-bed baseplate, magnets", "210 mm square with magnet pockets under every cell.", {
     unit: "grid", width: 5, depth: 5, magnets: true, screws: false, connectors: "none",
   }),
+  plate("plate-4x4-magnets", "classic", "4×4 baseplate, magnets", "168 mm square, magnet pockets, one piece.", {
+    unit: "grid", width: 4, depth: 4, magnets: true, screws: false, connectors: "none",
+  }),
+  plate("plate-4x4-plain", "classic", "4×4 baseplate, plain", "168 mm square, no magnets or screws. Fast print.", {
+    unit: "grid", width: 4, depth: 4, magnets: false, screws: false, connectors: "none",
+  }),
+  plate("plate-5x5-plain", "classic", "5×5 baseplate, plain", "210 mm square, no magnets or screws.", {
+    unit: "grid", width: 5, depth: 5, magnets: false, screws: false, connectors: "none",
+  }),
+  plate("plate-6x6-a1-max", "classic", "6×6 A1 bed-max, magnets", "252 mm square, the largest grid that fits the 256 mm A1 bed.", {
+    unit: "grid", width: 6, depth: 6, magnets: true, screws: false, connectors: "none",
+  }),
+  plate("plate-6x6-plain", "classic", "6×6 A1 bed-max, plain", "252 mm square frame with floor, no magnets.", {
+    unit: "grid", width: 6, depth: 6, magnets: false, screws: false, connectors: "none",
+  }),
+  lid("lid-handle", "classic", "Handle lid", "Recessed pocket with a bar to lift. Bins still stack on top.", { grip: "handle" }),
+  lid("lid-hole", "classic", "Finger-hole lid", "Square finger hole to pop the lid off.", { grip: "hole" }),
+  lid("lid-plain", "classic", "Plain stacking lid", "No grip, flat top. Sockets only, for stacking.", { grip: "none" }),
   bin("dons-screw-vault", "mafia", "Don's Screw Vault", "Eight pockets, every screw accounted for. Nobody talks.", {
     gridX: 2, gridY: 1, gridZ: 3, dividersX: 3, dividersY: 1, dividerWall: 1, magnets: "full",
   }),
@@ -103,6 +128,20 @@ export const PRESET_GROUPS: { id: PresetGroup; label: string }[] = [
   { id: "mafia", label: "ACMIE" },
 ];
 
+/** Built-in presets for one tab only. */
+export function presetsForTab(tab: StudioTab) {
+  return PRESETS.filter((preset) => preset.state.tab === tab);
+}
+
+/**
+ * State after loading a preset. Lid presets keep the current bin (the lid's
+ * footprint) and only change the lid style.
+ */
+export function applyPreset(current: StudioState, preset: Preset): StudioState {
+  if (preset.state.tab === "lid") return { ...current, tab: "lid", lid: { ...preset.state.lid } };
+  return preset.state;
+}
+
 export function presetQuery(preset: Preset) {
   return encodeState(preset.state);
 }
@@ -115,7 +154,8 @@ export function designKey(state: StudioState) {
   return encodeState({
     tab: state.tab,
     plate: state.tab === "baseplate" ? state.plate : DEFAULT_PLATE,
-    bin: state.tab === "baseplate" ? DEFAULT_BIN : state.bin,
+    // A lid's footprint follows the bin, so the lid's identity is its style alone.
+    bin: state.tab === "bin" ? state.bin : DEFAULT_BIN,
     lid: state.tab === "lid" ? state.lid : DEFAULT_LID,
   });
 }
@@ -137,7 +177,7 @@ export function presetSelection(
 ): PresetSelection {
   const key = designKey(state);
   if (picked?.key === key) return { picked, edited: false };
-  for (const preset of PRESETS) {
+  for (const preset of presetsForTab(state.tab)) {
     const presetKey = designKey(preset.state);
     if (presetKey === key) return { picked: { source: "pack", id: preset.id, name: preset.name, key }, edited: false };
   }
