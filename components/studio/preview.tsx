@@ -2,6 +2,8 @@
 
 import {
   Environment,
+  GizmoHelper,
+  GizmoViewport,
   Grid,
   Lightformer,
   OrbitControls,
@@ -135,9 +137,11 @@ const VIEW_DIRECTIONS: Record<ViewName, [number, number, number]> = {
 function Fit({
   parts,
   view = "perspective",
+  home = 0,
 }: {
   parts: MeshPart[];
   view?: ViewName;
+  home?: number;
 }) {
   const camera = useThree((state) => state.camera);
   const controls = useThree((state) => state.controls) as Orbit | null;
@@ -150,7 +154,7 @@ function Fit({
       parts,
       new THREE.Vector3(...VIEW_DIRECTIONS[view]),
     );
-  }, [camera, controls, parts, view]);
+  }, [camera, controls, parts, view, home]);
 
   return null;
 }
@@ -180,6 +184,31 @@ function BottomView({ tick }: { tick: number }) {
     controls.update();
   }, [tick, camera, controls]);
   return null;
+}
+
+/**
+ * Maya-style view gizmo: click an axis head (±X right/left, ±Y top/bottom, ±Z front/back)
+ * to snap there; click the centre cube to go back to the home view.
+ */
+function ViewGizmo({ onHome }: { onHome: () => void }) {
+  return (
+    <GizmoHelper alignment="top-left" margin={[64, 64]}>
+      <GizmoViewport
+        axisColors={["#e5484d", "#46a758", "#3e63dd"]}
+        labels={["R", "T", "F"]}
+        labelColor="#ffffff"
+      />
+      <mesh
+        onClick={(event) => {
+          event.stopPropagation();
+          onHome();
+        }}
+      >
+        <boxGeometry args={[14, 14, 14]} />
+        <meshBasicMaterial color="#9ca3af" toneMapped={false} />
+      </mesh>
+    </GizmoHelper>
+  );
 }
 
 function useDarkPaper() {
@@ -230,6 +259,7 @@ export function Preview({
   const dark = useDarkPaper();
   const [bottomTick, setBottomTick] = useState(0);
   const [quad, setQuad] = useState(false);
+  const [homeTick, setHomeTick] = useState(0);
   const colors = dark ? FILAMENT_DARK : FILAMENT;
   const badge =
     status === "rendering"
@@ -297,7 +327,7 @@ export function Preview({
           color={colors[index % colors.length]}
         />
       ))}
-      <Fit parts={parts} view={view} />
+      <Fit parts={parts} view={view} home={homeTick} />
       <OrbitControls
         makeDefault
         enableDamping
@@ -306,6 +336,9 @@ export function Preview({
         minPolarAngle={0.02}
       />
       {view === "perspective" ? <BottomView tick={bottomTick} /> : null}
+      {view === "perspective" ? (
+        <ViewGizmo onHome={() => setHomeTick((tick) => tick + 1)} />
+      ) : null}
     </Canvas>
   );
 
