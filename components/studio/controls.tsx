@@ -186,22 +186,6 @@ export function PlateControls({
     <div className="flex flex-col gap-3">
       <DrawerPlanner plate={plate} onApply={patch} />
       <SectionCard id="plate" title="Plate">
-        <p className="font-mono text-sm tabular-nums">
-          {failed
-            ? "No grid fits"
-            : `${plan.gridX} × ${plan.gridY} · ${formatMm(plan.outerW)} × ${formatMm(plan.outerD)} × ${formatMm(plan.thickness)} mm`}
-        </p>
-        {failed ? null : (
-          <FieldDescription>
-            {plan.pieces.length === 1
-              ? "One piece, centered on the bed."
-              : `${plan.pieces.length} pieces, cut on grid lines so each fits the bed.`}
-            {plate.pad && plate.unit === "mm"
-              ? ` Margin ${formatMm(plan.marginLeft)} / ${formatMm(plan.marginRight)} mm by ${formatMm(plan.marginBottom)} / ${formatMm(plan.marginTop)} mm.`
-              : ""}
-          </FieldDescription>
-        )}
-
         {failed ? (
           <Alert variant="destructive">
             <AlertTitle>Drawer is short of a cell</AlertTitle>
@@ -220,7 +204,7 @@ export function PlateControls({
                 patch({ unit: "mm", width: 252, depth: 168, pad: false })
               }
             >
-              6 × 4 grid
+              Use 6 × 4 grid
             </Button>
             <Button
               type="button"
@@ -231,7 +215,7 @@ export function PlateControls({
                 patch({ unit: "mm", width: 500, depth: 380, pad: true })
               }
             >
-              500 × 380 drawer
+              Use 500 × 380 drawer
             </Button>
           </div>
           <Choice
@@ -735,6 +719,29 @@ export function BinControls({
             onChange={(lip) => patch({ lip })}
           />
           <Choice
+            label="Shell"
+            hint="Seasonal outer walls. Pumpkin cuts shallow vertical ribs round the walls. Halloween engraves a jack-o'-lantern face and bats on the front wall. The base is untouched, so it still fits any baseplate."
+            value={bin.shell ?? "plain"}
+            options={[
+              { value: "plain", label: "Plain" },
+              { value: "pumpkin", label: "Pumpkin" },
+              { value: "halloween", label: "Halloween" },
+            ]}
+            onChange={(shell) => patch({ shell: shell === "plain" ? undefined : shell, face: shell === "pumpkin" ? bin.face : undefined })}
+          />
+          {bin.shell === "pumpkin" ? (
+            <Choice
+              label="Carved face"
+              hint="Engraves a jack-o'-lantern face into the front wall, under 1 mm deep, so it prints without support."
+              value={bin.face ? "on" : "off"}
+              options={[
+                { value: "off", label: "Off" },
+                { value: "on", label: "On" },
+              ]}
+              onChange={(value) => patch({ face: value === "on" ? true : undefined })}
+            />
+          ) : null}
+          <Choice
             label="Floor"
             hint="Lite hollows the base and drops the compartment floor onto the 4.75 mm profile."
             value={bin.lite ? "lite" : "full"}
@@ -824,8 +831,20 @@ export function LidControls({
               { value: "handle", label: "Handle" },
               { value: "hole", label: "Hole" },
             ]}
-            onChange={(grip) => onChange({ ...lid, grip })}
+            onChange={(grip) => onChange({ ...lid, grip, stem: grip === "none" ? lid.stem : undefined })}
           />
+          {lid.grip === "none" ? (
+            <Choice
+              label="Pumpkin stem"
+              hint="A 14 mm tapered stem in the middle of the lid, for a pumpkin bin. It sits in the top sockets, so nothing stacks on this lid."
+              value={lid.stem ? "on" : "off"}
+              options={[
+                { value: "off", label: "Off" },
+                { value: "on", label: "On" },
+              ]}
+              onChange={(value) => onChange({ ...lid, stem: value === "on" ? true : undefined })}
+            />
+          ) : null}
         </FieldGroup>
       </SectionCard>
     </div>
