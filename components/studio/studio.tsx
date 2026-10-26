@@ -8,16 +8,14 @@ import { Segmented } from "@/components/studio/segmented";
 
 import { MafiaLogo } from "@/components/studio/mafia-logo";
 import { useEffect, useState } from "react";
-import { Box, Download, Grid3x3, Link2, Moon, Paintbrush, PanelTop, Sun } from "lucide-react";
-import { PaintBar } from "@/components/studio/paint-bar";
-import { DEFAULT_PAINT, slotOf, type PaintState, type Slot } from "@/lib/paint";
-import { cn } from "@/lib/utils";
+import { Box, Download, Grid3x3, Link2, Moon, PanelTop, Sun } from "lucide-react";
+import { ColorsCard } from "@/components/studio/colors-card";
+import { DEFAULT_PAINT, labelOf, slotOf, type PaintState, type Slot } from "@/lib/paint";
 import type * as React from "react";
 import { PITCH_MM } from "@/lib/spec";
 import { BinControls, LidControls, PlateControls } from "@/components/studio/controls";
 import { lidHeight } from "@/lib/geometry/build";
 import { PresetsCard } from "@/components/studio/presets-card";
-import { IridescentFoil } from "@/components/studio/iridescent-foil";
 import { Toast, useToast } from "@/components/studio/toast";
 import type { PickedPreset } from "@/lib/presets";
 import { Preview } from "@/components/studio/preview";
@@ -102,6 +100,7 @@ export function Studio() {
   const [previewQuality, setPreviewQuality] = usePreviewQuality();
   const paint = state.paint ?? DEFAULT_PAINT;
   const [activeSlot, setActiveSlot] = useState<Slot>(2);
+  const [printView, setPrintView] = useState(false);
   const setPaint = (next: PaintState) => setState((current) => ({ ...current, paint: next }));
   const paintFlag = paint.on ? { paint: true } : {};
   const job: GeometryJob =
@@ -337,10 +336,20 @@ export function Studio() {
                 onChange={(bin) => setState((current) => ({ ...current, bin }))}
               />
             )}
+            <ColorsCard
+              kind={state.tab}
+              paint={paint}
+              active={activeSlot}
+              present={paint.on ? new Set(parts.flatMap((part) => (part.region ? [part.region] : []))) : null}
+              printView={paint.on && printView}
+              onActive={setActiveSlot}
+              onChange={setPaint}
+              onPrintView={setPrintView}
+            />
           </div>
-          <IridescentFoil className="motion-rise mt-3 h-8 flex-none rounded-lg [--motion-i:4]">
+          <div className="motion-rise mt-3 flex-none [--motion-i:4]">
             <HorrorBanner />
-          </IridescentFoil>
+          </div>
         </SidebarContent>
       </Sidebar>
 
@@ -392,45 +401,20 @@ export function Studio() {
               toolbar={
                 <>
                   <QualityToggle value={previewQuality} onChange={setPreviewQuality} />
-                  <button
-                    type="button"
-                    aria-pressed={paint.on}
-                    title={paint.on ? "Back to plain preview" : "Colour each part by AMS slot for a multi-colour 3MF"}
-                    onClick={() => setPaint({ ...paint, on: !paint.on })}
-                    className={cn(
-                      "flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs backdrop-blur transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                      paint.on
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-border bg-background/80 text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    <Paintbrush className="size-3.5" aria-hidden />
-                    Paint
-                  </button>
                 </>
               }
               paint={
                 paint.on
                   ? {
                       palette: paint.palette,
+                      print: printView,
+                      labelOf: (part) => labelOf(part.region),
                       colorOf: (part) => (part.region ? paint.palette[slotOf(paint.slots, part.region) - 1] : null),
                       onPick: (part) => {
                         if (part.region) setPaint({ ...paint, slots: { ...paint.slots, [part.region]: activeSlot } });
                       },
                     }
                   : undefined
-              }
-              overlay={
-                paint.on ? (
-                  <PaintBar
-                    kind={state.tab}
-                    paint={paint}
-                    active={activeSlot}
-                    present={new Set(parts.flatMap((part) => (part.region ? [part.region] : [])))}
-                    onActive={setActiveSlot}
-                    onChange={setPaint}
-                  />
-                ) : undefined
               }
               stats={state.tab === "baseplate" ? <PlateStats plate={state.plate} plan={plan} /> : undefined}
             />

@@ -126,7 +126,16 @@ function DrawerPlanner({
         <p className="font-mono text-sm tabular-nums" data-testid="drawer-grid">
           {fits ? `${plan.gridX} × ${plan.gridY} cells · ${formatMm(plan.gridW)} × ${formatMm(plan.gridD)} mm grid` : "Drawer is smaller than one 42 mm cell"}
         </p>
-        {fits ? (
+        {fits && Math.max(plan.marginLeft, plan.marginRight, plan.marginBottom, plan.marginTop) >= 2 ? (
+          <div data-testid="drawer-gap" className="flex flex-col gap-1.5">
+          <div className="flex items-center text-xs font-medium">
+            Gap to drawer wall (mm)
+            <InfoTip
+              id="drawer-gap-tip"
+              label="gap to drawer wall"
+              text="Leftover space between grid and drawer on each side. Use padding or spacers to fill it."
+            />
+          </div>
           <div className="grid grid-cols-4 gap-1.5 text-center">
             {(
               [
@@ -138,9 +147,10 @@ function DrawerPlanner({
             ).map(([side, mm]) => (
               <div key={side} className="tune-field flex-col justify-center gap-0 h-auto! py-1">
                 <span className="text-[11px] text-muted-foreground">{side}</span>
-                <span className="text-xs tabular-nums">{formatMm(mm)}</span>
+                <span className="text-xs tabular-nums">{formatMm(mm)} mm</span>
               </div>
             ))}
+          </div>
           </div>
         ) : null}
         <Choice
@@ -194,6 +204,15 @@ export function PlateControls({
         ) : null}
 
         <FieldGroup className="gap-4">
+          <div data-testid="quick-start" className="flex flex-col gap-1.5">
+          <div className="flex items-center text-xs font-medium">
+            Quick start
+            <InfoTip
+              id="quick-start-tip"
+              label="quick start"
+              text="Max for A1 bed: a bare 252 × 252 mm grid of 6 by 6 cells, no border. The biggest plate that prints in one piece on the 256 mm A1 bed. Fit my drawer: sizes the plate to a 500 × 380 mm drawer. It fits as many cells as it can and pads the leftover into a solid border. Too big for one bed, so it prints in pieces."
+            />
+          </div>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -201,10 +220,10 @@ export function PlateControls({
               size="sm"
               className="ctx-chip"
               onClick={() =>
-                patch({ unit: "mm", width: 252, depth: 168, pad: false })
+                patch({ unit: "mm", width: 252, depth: 252, pad: false })
               }
             >
-              Use 6 × 4 grid
+              Max for A1 bed (6×6)
             </Button>
             <Button
               type="button"
@@ -215,8 +234,9 @@ export function PlateControls({
                 patch({ unit: "mm", width: 500, depth: 380, pad: true })
               }
             >
-              Use 500 × 380 drawer
+              Fit my drawer (500×380)
             </Button>
+          </div>
           </div>
           <Choice
             label="Measure in"
