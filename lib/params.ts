@@ -75,7 +75,18 @@ export type BinParams = {
   dividerHeight: number;
   /** Raised text on the label tab, up to 12 characters. Empty means none. */
   labelText: string;
+  /**
+   * Seasonal outer shell. Walls only: the base stays the standard profile.
+   * "pumpkin" cuts vertical ribs round the walls; "halloween" engraves a
+   * jack-o'-lantern face and bats on the front wall. Absent means plain.
+   */
+  shell?: BinShell;
+  /** Pumpkin only: engrave a carved face on the front wall. */
+  face?: boolean;
 };
+
+export const BIN_SHELLS = ["plain", "pumpkin", "halloween"] as const;
+export type BinShell = (typeof BIN_SHELLS)[number];
 
 /** The lid takes its width and depth from the bin, so the two always match. */
 export type LidParams = {
@@ -85,6 +96,8 @@ export type LidParams = {
    * Neither rises into the top sockets, so bins still stack on the lid.
    */
   grip: LidGrip;
+  /** Pumpkin stem in the middle of the lid. Only with no grip; bins no longer stack on it. */
+  stem?: boolean;
 };
 
 export type StudioState = {
@@ -179,6 +192,14 @@ function num(value: string | null, fallback: number, min: number, max: number) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return clamp(parsed, min, max);
+}
+
+/** Optional seasonal shell; plain links stay unchanged. */
+function decodeShell(params: URLSearchParams): Pick<BinParams, "shell" | "face"> {
+  const shell = params.get("shell");
+  if (shell === "halloween") return { shell };
+  if (shell === "pumpkin") return params.get("face") === "1" ? { shell, face: true } : { shell };
+  return {};
 }
 
 function bool(value: string | null, fallback: boolean) {
@@ -299,9 +320,11 @@ export function decodeState(search: string): StudioState {
       dividerWall: limit("dividerWall", params.get("dvt")),
       dividerHeight: limit("dividerHeight", params.get("dvh")),
       labelText: cleanLabelText(params.get("lt") ?? ""),
+      ...decodeShell(params),
     },
     lid: {
       grip: decodeGrip(params),
+      ...(params.get("lstem") === "1" ? { stem: true } : {}),
     },
   };
 }
@@ -340,7 +363,10 @@ export function encodeState(state: StudioState): string {
   params.set("dvt", trim(state.bin.dividerWall));
   params.set("dvh", trim(state.bin.dividerHeight));
   if (state.bin.labelText) params.set("lt", state.bin.labelText);
+  if (state.bin.shell && state.bin.shell !== "plain") params.set("shell", state.bin.shell);
+  if (state.bin.shell === "pumpkin" && state.bin.face) params.set("face", "1");
   params.set("lgrip", GRIP_CODES[state.lid.grip]);
+  if (state.lid.stem) params.set("lstem", "1");
   return params.toString();
 }
 

@@ -434,6 +434,17 @@ export function buildBinSolid(
     }
   }
 
+  if (params.shell === "pumpkin" || params.shell === "halloween") {
+    solid = seasonalShell(wasm, solid, params, {
+      x0: originX,
+      y0: originY,
+      width: footprint.width,
+      depth: footprint.depth,
+      wall,
+      top: body,
+    });
+  }
+
   if (params.lip !== "none") {
     const lip = stackingLip(
       wasm,
@@ -899,6 +910,15 @@ export function buildLidSolid(
     );
     solid = addAll(wasm, solid, [bar]);
   }
+  if (params.stem && params.grip === "none") {
+    // Tapers inward as it rises, so it prints without support.
+    const stem = wasm.Manifold.cylinder(PUMPKIN_STEM_MM, 5, 3.5, 24).translate(
+      centerX,
+      centerY,
+      socketFloorZ - 0.01,
+    );
+    solid = addAll(wasm, solid, [stem]);
+  }
   return solid;
 }
 
@@ -1238,4 +1258,95 @@ export function buildJob(wasm: ManifoldToplevel, job: GeometryJob, quality: Qual
   if (job.kind === "bin") return buildBin(wasm, job.params, quality, job.bed);
   if (job.kind === "lid") return buildLid(wasm, job.gridX, job.gridY, job.params, quality, job.half, job.bed);
   return buildBaseplate(wasm, job.params, quality);
+}
+
+/** Stem height above the lid's socket floor. */
+export const PUMPKIN_STEM_MM = 14;
+
+type WallBox = { x0: number; y0: number; width: number; depth: number; wall: number; top: number };
+
+const FACE_EYE: Point[] = [[-0.6, 0.1], [-0.2, 0.1], [-0.4, 0.55]];
+const FACE_NOSE: Point[] = [[-0.1, -0.08], [0.1, -0.08], [0, 0.12]];
+const FACE_MOUTH: Point[] = [
+  [-0.75, -0.25], [-0.5, -0.38], [-0.25, -0.25], [0, -0.38], [0.25, -0.25], [0.5, -0.38], [0.75, -0.25],
+  [0.45, -0.7], [-0.45, -0.7],
+];
+const BAT: Point[] = [
+  [-1, 0.2], [-0.6, 0.55], [-0.35, 0.15], [0, 0.35], [0.35, 0.15], [0.6, 0.55], [1, 0.2],
+  [0.6, -0.1], [0.3, 0], [0, -0.4], [-0.3, 0], [-0.6, -0.1],
+];
+
+/**
+ * Seasonal wall treatment. Everything stays above the base profile, so the
+ * base still snaps into any standard baseplate. Cuts are shallow and vertical
+ * (or bridge under 1 mm), so they print on an A1 without support.
+ */
+function seasonalShell(wasm: ManifoldToplevel, solid: Manifold, params: BinParams, box: WallBox): Manifold {
+  const zLo = BASE_PROFILE_HEIGHT_MM + 1;
+  const zHi = box.top - 1;
+  if (zHi - zLo < 4) return solid;
+  const cutters: Manifold[] = [];
+  if (params.shell === "pumpkin") cutters.push(...pumpkinRibs(wasm, box, zLo, zHi));
+  if (params.shell === "halloween" || (params.shell === "pumpkin" && params.face)) {
+    cutters.push(...frontArt(wasm, box, zLo, zHi, params.shell === "halloween"));
+  }
+  return subtractAll(wasm, solid, cutters);
+}
+
+/** Vertical grooves round all four walls, like the lobes of a pumpkin. */
+function pumpkinRibs(wasm: ManifoldToplevel, box: WallBox, zLo: number, zHi: number): Manifold[] {
+  const depth = Math.min(0.8, box.wall - 0.6);
+  if (depth < 0.2) return [];
+  const radius = 2.2;
+  const height = zHi - zLo;
+  const out: Manifold[] = [];
+  const along = (length: number) => {
+    const usable = length - 2 * (BASE_TOP_RADIUS_MM + 3);
+    const count = Math.max(1, Math.round(usable / 12));
+    return Array.from({ length: count }, (_, index) => -usable / 2 + (usable * (index + 0.5)) / count);
+  };
+  const groove = (x: number, y: number) =>
+    wasm.Manifold.cylinder(height, radius, radius, 20).translate(x, y, zLo);
+  const cx = box.x0 + box.width / 2;
+  const cy = box.y0 + box.depth / 2;
+  const off = radius - depth;
+  for (const dx of along(box.width)) {
+    out.push(groove(cx + dx, box.y0 - off), groove(cx + dx, box.y0 + box.depth + off));
+  }
+  for (const dy of along(box.depth)) {
+    out.push(groove(box.x0 - off, cy + dy), groove(box.x0 + box.width + off, cy + dy));
+  }
+  return out;
+}
+
+/** Jack-o'-lantern face (and bats either side) engraved into the front wall. */
+function frontArt(wasm: ManifoldToplevel, box: WallBox, zLo: number, zHi: number, bats: boolean): Manifold[] {
+  const depth = Math.min(0.8, box.wall - 0.5);
+  if (depth < 0.2) return [];
+  const cx = box.x0 + box.width / 2;
+  const cz = (zLo + zHi) / 2;
+  const h = ((zHi - zLo) / 2) * 0.9;
+  const hw = Math.min(h * 1.3, box.width * 0.3);
+  const engrave = (shape: Point[], ox: number, oz: number, sx: number, sz: number) => {
+    const points = shape.map(([u, v]) => [ox + u * sx, oz + v * sz] as Point);
+    const section = polygonSection(wasm, points);
+    const prism = section.extrude(depth + 0.2).rotate([90, 0, 0]).translate(0, box.y0 + depth, 0);
+    section.delete();
+    return prism;
+  };
+  const mirror = (shape: Point[]) => shape.map(([u, v]) => [-u, v] as Point);
+  const out = [
+    engrave(FACE_EYE, cx, cz, hw, h),
+    engrave(mirror(FACE_EYE), cx, cz, hw, h),
+    engrave(FACE_NOSE, cx, cz, hw, h),
+    engrave(FACE_MOUTH, cx, cz, hw, h),
+  ];
+  if (bats) {
+    const bw = h * 0.5;
+    const offset = hw + bw + 3;
+    if (box.width / 2 - offset - bw > BASE_TOP_RADIUS_MM + 2) {
+      for (const side of [-1, 1]) out.push(engrave(BAT, cx + side * offset, cz + h * 0.35, bw, bw * 0.8));
+    }
+  }
+  return out;
 }

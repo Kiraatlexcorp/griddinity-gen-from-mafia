@@ -17,7 +17,7 @@ import { PLATE_EDGES } from "@/lib/spec";
  * Built-in designs. "classic" ones are common real-world Gridfinity setups;
  * "mafia" ones are Mafia-flavoured jokes that still build real, printable designs.
  */
-export type PresetGroup = "classic" | "mafia";
+export type PresetGroup = "classic" | "halloween" | "mafia";
 
 export type Preset = {
   id: string;
@@ -94,6 +94,16 @@ export const PRESETS: Preset[] = [
   lid("lid-handle", "classic", "Handle lid", "Recessed pocket with a bar to lift. Bins still stack on top.", { grip: "handle" }),
   lid("lid-hole", "classic", "Finger-hole lid", "Square finger hole to pop the lid off.", { grip: "hole" }),
   lid("lid-plain", "classic", "Plain stacking lid", "No grip, flat top. Sockets only, for stacking.", { grip: "none" }),
+  bin("pumpkin-bin", "halloween", "Pumpkin bin", "2×2 bin with ribbed pumpkin walls. Standard base, snaps into any baseplate.", {
+    gridX: 2, gridY: 2, gridZ: 6, shell: "pumpkin", magnets: "full",
+  }),
+  bin("pumpkin-bin-carved", "halloween", "Pumpkin bin, carved face", "Ribbed walls plus a jack-o'-lantern face on the front.", {
+    gridX: 2, gridY: 2, gridZ: 6, shell: "pumpkin", face: true, magnets: "full",
+  }),
+  bin("halloween-box", "halloween", "Halloween box", "3×2 box, face and bats engraved on the front. Candy goes inside.", {
+    gridX: 3, gridY: 2, gridZ: 6, shell: "halloween", label: "full", labelText: "CANDY", magnets: "full",
+  }),
+  lid("pumpkin-stem-lid", "halloween", "Pumpkin stem lid", "No grip, tapered stem on top. Pairs with the pumpkin bin.", { grip: "none", stem: true }),
   bin("dons-screw-vault", "mafia", "Don's Screw Vault", "Eight pockets, every screw accounted for. Nobody talks.", {
     gridX: 2, gridY: 1, gridZ: 3, dividersX: 3, dividersY: 1, dividerWall: 1, magnets: "full",
   }),
@@ -125,6 +135,7 @@ export const PRESETS: Preset[] = [
 
 export const PRESET_GROUPS: { id: PresetGroup; label: string }[] = [
   { id: "classic", label: "Gridfinity classics" },
+  { id: "halloween", label: "Halloween" },
   { id: "mafia", label: "ACMIE" },
 ];
 
