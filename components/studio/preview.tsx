@@ -304,6 +304,7 @@ export function Preview({
   quality,
   toolbar,
   stats,
+  suggestions,
   paint,
 }: {
   /** Paint mode: colour parts by their AMS slot and pick them on click. */
@@ -317,6 +318,7 @@ export function Preview({
   };
   /** Overlay strip along the bottom right of the viewer. */
   stats?: React.ReactNode;
+  suggestions?: { label: string; onClick: () => void }[];
   parts: MeshPart[];
   quality: PreviewQuality;
   toolbar?: React.ReactNode;
@@ -478,8 +480,17 @@ export function Preview({
           {quad ? "Single" : "Quad"}
         </button>
       </div>
-      {stats && !printing ? (
-        <div className="pointer-events-none absolute right-4 bottom-4 max-w-[min(60%,32rem)]">
+      {(stats || suggestions?.length) && !printing ? (
+        <div className="pointer-events-none absolute right-4 bottom-4 flex max-w-[min(60%,32rem)] flex-col items-end gap-2">
+          {suggestions?.length ? (
+            <div data-testid="view-suggestions" className="pointer-events-auto flex flex-col items-end gap-1.5">
+              {suggestions.map((s) => (
+                <button key={s.label} type="button" onClick={s.onClick} className="suggest-pill">
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
           {stats}
         </div>
       ) : null}

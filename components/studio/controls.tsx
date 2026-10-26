@@ -107,7 +107,7 @@ function DrawerPlanner({
   const fromPlate = plate.unit === "mm" && plate.pad;
   const [w, setW] = useState(fromPlate ? plate.width : 500);
   const [d, setD] = useState(fromPlate ? plate.depth : 380);
-  const [pad, setPad] = useState(true);
+  const pad = plate.pad;
   const plan = planDrawer(w, d, pad);
   const applied =
     plate.unit === plan.apply.unit &&
@@ -153,16 +153,6 @@ function DrawerPlanner({
           </div>
           </div>
         ) : null}
-        <Choice
-          label="Leftover space"
-          hint={pad ? "Baseplate fills the drawer: leftover becomes a solid border on each edge." : "Bare grid: leftover stays as gaps around the plate."}
-          value={pad ? "pad" : "grid"}
-          options={[
-            { value: "pad", label: "Pad edges" },
-            { value: "grid", label: "Grid only" },
-          ]}
-          onChange={(value) => setPad(value === "pad")}
-        />
         <Button
           type="button"
           size="sm"
@@ -204,40 +194,6 @@ export function PlateControls({
         ) : null}
 
         <FieldGroup className="gap-4">
-          <div data-testid="quick-start" className="flex flex-col gap-1.5">
-          <div className="flex items-center text-xs font-medium">
-            Quick start
-            <InfoTip
-              id="quick-start-tip"
-              label="quick start"
-              text="Max for A1 bed: a bare 252 × 252 mm grid of 6 by 6 cells, no border. The biggest plate that prints in one piece on the 256 mm A1 bed. Fit my drawer: sizes the plate to a 500 × 380 mm drawer. It fits as many cells as it can and pads the leftover into a solid border. Too big for one bed, so it prints in pieces."
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="ctx-chip"
-              onClick={() =>
-                patch({ unit: "mm", width: 252, depth: 252, pad: false })
-              }
-            >
-              Max for A1 bed (6×6)
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="ctx-chip"
-              onClick={() =>
-                patch({ unit: "mm", width: 500, depth: 380, pad: true })
-              }
-            >
-              Fit my drawer (500×380)
-            </Button>
-          </div>
-          </div>
           <Choice
             label="Measure in"
             value={plate.unit}
@@ -297,7 +253,7 @@ export function PlateControls({
               value={plate.pad ? "pad" : "grid"}
               options={[
                 { value: "grid", label: "Grid only" },
-                { value: "pad", label: "Pad it" },
+                { value: "pad", label: "Pad edges" },
               ]}
               onChange={(value) => patch({ pad: value === "pad" })}
             />

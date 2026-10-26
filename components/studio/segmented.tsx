@@ -1,10 +1,31 @@
 "use client";
 
 import type { ReactNode } from "react";
+import {
+  AlignCenter, AlignLeft, AlignRight, Ban, Box, Circle, CircleDot, Crown, Feather, Frame, Ghost, Grid2x2,
+  Grid3x3, Layers, LayoutGrid, Minus, Printer, Ruler, Settings2, Smile, Sparkles, Square, Weight,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "cn";
 import { Tabs, TabsIndicator, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export type SegmentOption<T extends string> = { value: T; label: ReactNode };
+
+/** Small leading icon for every plain-text option, keyed by its label. */
+const ICONS: Record<string, LucideIcon> = {
+  Millimetres: Ruler, "Grid units": Grid3x3, "Grid only": Square, "Pad edges": Frame,
+  Plain: Square, Weighted: Weight, "42 mm": Grid2x2, "Half 21 mm": LayoutGrid,
+  None: Ban, Off: Ban, On: Smile, Left: AlignLeft, Center: AlignCenter, Right: AlignRight, Full: Grid3x3,
+  Corner: CircleDot, Default: Crown, Thin: Minus, Pumpkin: Circle, Halloween: Ghost,
+  "Full base": Layers, Lite: Feather, Handle: Box, Hole: CircleDot,
+  Mini: Printer, P1S: Printer, A1: Printer, Custom: Settings2, "Low poly": Grid2x2, "High quality": Sparkles,
+};
+
+function withIcon(label: ReactNode): ReactNode {
+  if (typeof label !== "string") return label;
+  const Icon = ICONS[label];
+  return Icon ? <><Icon data-icon="inline-start" aria-hidden="true" className="size-3.5!" />{label}</> : label;
+}
 
 /**
  * The one segmented control: the sliding-pill look of the Baseplate / Bin / Lid
@@ -37,7 +58,7 @@ export function Segmented<T extends string>({
         <TabsIndicator />
         {options.map((option) => (
           <TabsTrigger key={option.value} value={option.value}>
-            {option.label}
+            {withIcon(option.label)}
           </TabsTrigger>
         ))}
       </TabsList>

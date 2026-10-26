@@ -416,6 +416,14 @@ export function Studio() {
                     }
                   : undefined
               }
+              suggestions={
+                state.tab === "baseplate"
+                  ? [
+                      { label: "Max for A1 bed (6×6)", onClick: () => setState((c) => ({ ...c, plate: { ...c.plate, unit: "mm", width: 252, depth: 252, pad: false } })) },
+                      { label: "Fit my drawer (500×380)", onClick: () => setState((c) => ({ ...c, plate: { ...c.plate, unit: "mm", width: 500, depth: 380, pad: true } })) },
+                    ]
+                  : undefined
+              }
               stats={state.tab === "baseplate" ? <PlateStats plate={state.plate} plan={plan} /> : undefined}
             />
           </Card>
