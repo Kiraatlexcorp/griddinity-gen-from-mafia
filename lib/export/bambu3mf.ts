@@ -3,9 +3,9 @@ import type { MeshPart } from "@/lib/geometry/protocol";
 import { SLOT_COUNT, slotOf, type Paint, type Palette } from "@/lib/paint";
 import { arrangeOnBed, escapeXml, fmt, objectXml } from "@/lib/export/threemf";
 
-type Group = { name: string; parts: MeshPart[] };
+export type Group = { name: string; parts: MeshPart[] };
 
-function groupsOf(parts: MeshPart[]): Group[] {
+export function groupsOf(parts: MeshPart[]): Group[] {
   const map = new Map<string, Group>();
   for (const part of parts) {
     const key = part.group ?? part.name;
@@ -51,7 +51,40 @@ export function paintedTo3mf(
   const groups = groupsOf(parts);
   const arranged = arrangeOnBed(groups.map(proxyOf), bed);
   const plates = arranged.reduce((most, item) => Math.max(most, item.plate + 1), 1);
+  return bambuPackage({
+    groups,
+    placed: arranged.map(({ x, y, z, plate }) => ({ x, y, z, plate })),
+    plates: Array.from({ length: plates }, () => ({ name: "" })),
+    paint,
+    palette,
+    title,
+  });
+}
 
+export type PlacedGroup = { x: number; y: number; z: number; plate: number };
+export type PlateInfo = { name: string; thumbnail?: Uint8Array; thumbnailSmall?: Uint8Array };
+
+/** Writes the Bambu project package for groups already placed on plates. */
+export function bambuPackage({
+  groups,
+  placed,
+  plates: plateInfo,
+  paint,
+  palette,
+  title,
+  objectSettings: perObject = [],
+}: {
+  /** Per-object process overrides (e.g. wall_loops), indexed like groups. */
+  objectSettings?: (Record<string, string> | undefined)[];
+  groups: Group[];
+  placed: PlacedGroup[];
+  plates: PlateInfo[];
+  paint: Paint;
+  palette: Palette;
+  title: string;
+}): Uint8Array {
+  const arranged = placed;
+  const plates = plateInfo.length;
   // Resource ids are shared within a model file: basematerials takes id 1.
   let meshId = 1;
   const meshObjects: string[] = [];
@@ -139,7 +172,7 @@ ${items}
       return `  <object id="${id}">
     <metadata key="name" value="${escapeXml(group.name)}"/>
     <metadata key="extruder" value="${components[0]?.slot ?? 1}"/>
-${partsXml}
+${Object.entries(perObject[index] ?? {}).map(([k, v]) => `    <metadata key="${escapeXml(k)}" value="${escapeXml(v)}"/>\n`).join("")}${partsXml}
   </object>`;
     })
     .join("\n");
@@ -158,8 +191,9 @@ ${partsXml}
       .join("\n");
     return `  <plate>
     <metadata key="plater_id" value="${plate + 1}"/>
-    <metadata key="plater_name" value=""/>
-    <metadata key="locked" value="false"/>
+    <metadata key="plater_name" value="${escapeXml(plateInfo[plate].name)}"/>
+    <metadata key="locked" value="false"/>${plateInfo[plate].thumbnail ? `
+    <metadata key="thumbnail_file" value="Metadata/plate_${plate + 1}.png"/>` : ""}
     <metadata key="filament_map_mode" value="Auto For Flush"/>
 ${instances}
   </plate>`;
@@ -189,6 +223,19 @@ ${plateXml}
     filament_map: fill("1"),
     single_extruder_multi_material: "1",
     enable_prime_tower: "1",
+    // Embedded A1 0.4 / PLA / 0.20mm Standard profile so Studio opens it as an A1 project.
+    printer_model: "Bambu Lab A1",
+    printer_settings_id: "Bambu Lab A1 0.4 nozzle",
+    printer_variant: "0.4",
+    nozzle_diameter: ["0.4"],
+    inherits: "0.20mm Standard @BBL A1",
+    print_settings_id: "0.20mm Standard @BBL A1",
+    default_print_profile: "0.20mm Standard @BBL A1",
+    layer_height: "0.2",
+    wall_loops: "2",
+    sparse_infill_density: "15%",
+    curr_bed_type: "Textured PEI Plate",
+    from: "project",
     version: "02.04.00.70",
   };
 
@@ -204,7 +251,9 @@ ${plateXml}
 `;
   const rootRels = `<?xml version="1.0" encoding="UTF-8"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
- <Relationship Target="/3D/3dmodel.model" Id="rel-1" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>
+ <Relationship Target="/3D/3dmodel.model" Id="rel-1" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>${plateInfo[0]?.thumbnail ? `
+ <Relationship Target="/Metadata/plate_1.png" Id="rel-2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/thumbnail"/>
+ <Relationship Target="/Metadata/plate_1_small.png" Id="rel-4" Type="http://schemas.bambulab.com/package/2021/cover-thumbnail-small"/>` : ""}
 </Relationships>
 `;
   const modelRels = `<?xml version="1.0" encoding="UTF-8"?>
@@ -218,10 +267,22 @@ ${plateXml}
     <header_item key="X-BBL-Client-Type" value="slicer"/>
     <header_item key="X-BBL-Client-Version" value="02.04.00.70"/>
   </header>
+${plateInfo.map((info, i) => `  <plate>
+    <metadata key="index" value="${i + 1}"/>
+    <metadata key="printer_model_id" value="N2S"/>
+    <metadata key="nozzle_diameters" value="0.4"/>
+  </plate>`).join("\n")}
 </config>
 `;
+  const thumbs: Record<string, Uint8Array> = {};
+  plateInfo.forEach((info, index) => {
+    if (info.thumbnail) thumbs[`Metadata/plate_${index + 1}.png`] = info.thumbnail;
+    if (info.thumbnailSmall) thumbs[`Metadata/plate_${index + 1}_small.png`] = info.thumbnailSmall;
+  });
+  const sequence = Object.fromEntries(plateInfo.map((_, index) => [`plate_${index + 1}`, { sequence: [] }]));
   return zipSync(
     {
+      ...thumbs,
       "[Content_Types].xml": strToU8(contentTypes),
       "_rels/.rels": strToU8(rootRels),
       "3D/3dmodel.model": strToU8(rootModel),
@@ -230,7 +291,7 @@ ${plateXml}
       "Metadata/model_settings.config": strToU8(modelSettings),
       "Metadata/project_settings.config": strToU8(JSON.stringify(projectSettings, null, 4)),
       "Metadata/slice_info.config": strToU8(sliceInfo),
-      "Metadata/filament_sequence.json": strToU8(JSON.stringify({ plate_1: { sequence: [] } })),
+      "Metadata/filament_sequence.json": strToU8(JSON.stringify(sequence)),
     },
     { level: 6 },
   );
