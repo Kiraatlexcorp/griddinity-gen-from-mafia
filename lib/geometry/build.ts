@@ -18,7 +18,7 @@ import {
   type Point,
 } from "@/lib/geometry/connectors";
 import type { BaseplateParams, BinParams, LidParams } from "@/lib/params";
-import type { GeometryJob, MeshPart, Quality } from "@/lib/geometry/protocol";
+import type { GeometryJob, MeshPart, PaintRegion, Quality } from "@/lib/geometry/protocol";
 import { radii, roundedRectPoints, type Radii } from "@/lib/geometry/shape";
 import {
   BASE_HEIGHT_MM,
@@ -738,10 +738,13 @@ export function buildBin(
   params: BinParams,
   quality: Quality,
   bed?: number,
+  paint = false,
 ): MeshPart[] {
   const solid = buildBinSolid(wasm, params, quality);
   const name = `bin-${params.gridX}x${params.gridY}x${params.gridZ}`;
   try {
+    const pieces = bed ? planBinSplit(params.gridX, params.gridY, params.half, bed).pieces : 1;
+    if (paint && pieces <= 1) return paintSplit(wasm, solid, name, binRegions(wasm, solid, params));
     if (!bed) return [meshFromSolid(solid, name)];
     return splitToBed(wasm, solid, name, planBinSplit(params.gridX, params.gridY, params.half, bed));
   } finally {
@@ -949,10 +952,13 @@ export function buildLid(
   quality: Quality,
   half = false,
   bed?: number,
+  paint = false,
 ): MeshPart[] {
   const solid = buildLidSolid(wasm, gridX, gridY, params, quality, half);
   const name = `lid-${gridX}x${gridY}`;
   try {
+    const pieces = bed ? planBinSplit(gridX, gridY, half, bed).pieces : 1;
+    if (paint && pieces <= 1) return paintSplit(wasm, solid, name, lidRegions(wasm, gridX, gridY, params));
     if (!bed) return [meshFromSolid(solid, name)];
     return splitToBed(wasm, solid, name, planBinSplit(gridX, gridY, half, bed));
   } finally {
@@ -1064,6 +1070,7 @@ export function buildBaseplate(
   wasm: ManifoldToplevel,
   params: BaseplateParams,
   quality: Quality,
+  paint = false,
 ): MeshPart[] {
   const plan = planBaseplate(params);
   if ("error" in plan) throw new Error(plan.error);
@@ -1235,7 +1242,26 @@ export function buildBaseplate(
       throw new Error(`Baseplate piece ${piece.index} came out empty.`);
     }
     try {
-      parts.push(meshFromSolid(solid, `baseplate-${piece.index}`, piece.originX, piece.originY, 0));
+      const pieceName = `baseplate-${piece.index}`;
+      if (paint) {
+        const box = solid.boundingBox();
+        const slab = (z0: number, z1: number) =>
+          wasm.Manifold.cube([box.max[0] - box.min[0] + 2, box.max[1] - box.min[1] + 2, z1 - z0]).translate(
+            box.min[0] - 1,
+            box.min[1] - 1,
+            z0,
+          );
+        const regions: [PaintRegion, Manifold][] =
+          socketFloorZ > 0.01
+            ? [
+                ["plate-floor", slab(box.min[2] - 1, socketFloorZ)],
+                ["plate-ribs", slab(socketFloorZ, box.max[2] + 1)],
+              ]
+            : [["plate-ribs", slab(box.min[2] - 1, box.max[2] + 1)]];
+        parts.push(...paintSplit(wasm, solid, pieceName, regions, piece.originX, piece.originY));
+      } else {
+        parts.push(meshFromSolid(solid, pieceName, piece.originX, piece.originY, 0));
+      }
     } finally {
       drop(solid);
     }
@@ -1255,9 +1281,11 @@ export function buildBaseplate(
 
 /** Each part (baseplate, bin, lid) builds and exports on its own. */
 export function buildJob(wasm: ManifoldToplevel, job: GeometryJob, quality: Quality): MeshPart[] {
-  if (job.kind === "bin") return buildBin(wasm, job.params, quality, job.bed);
-  if (job.kind === "lid") return buildLid(wasm, job.gridX, job.gridY, job.params, quality, job.half, job.bed);
-  return buildBaseplate(wasm, job.params, quality);
+  if (job.kind === "bin") return buildBin(wasm, job.params, quality, job.bed, job.paint);
+  if (job.kind === "lid") {
+    return buildLid(wasm, job.gridX, job.gridY, job.params, quality, job.half, job.bed, job.paint);
+  }
+  return buildBaseplate(wasm, job.params, quality, job.paint);
 }
 
 /** Stem height above the lid's socket floor. */
@@ -1349,4 +1377,101 @@ function frontArt(wasm: ManifoldToplevel, box: WallBox, zLo: number, zHi: number
     }
   }
   return out;
+}
+
+/**
+ * Cut a finished solid into paint regions by intersecting it with region
+ * cutters that tile space. The solid itself is never rebuilt, so the pieces
+ * add back up to exactly the standard geometry. Empty regions are dropped.
+ */
+export function paintSplit(
+  wasm: ManifoldToplevel,
+  solid: Manifold,
+  group: string,
+  regions: [PaintRegion, Manifold][],
+  placeX = 0,
+  placeY = 0,
+): MeshPart[] {
+  const parts: MeshPart[] = [];
+  try {
+    for (const [region, cutter] of regions) {
+      const piece = solid.intersect(cutter);
+      try {
+        if (piece.isEmpty() || piece.volume() < 0.01) continue;
+        parts.push({ ...meshFromSolid(piece, `${group}-${region}`, placeX, placeY, 0), region, group });
+      } finally {
+        drop(piece);
+      }
+    }
+  } finally {
+    for (const [, cutter] of regions) drop(cutter);
+  }
+  return parts;
+}
+
+const PAINT_FAR_MM = 2000;
+
+/**
+ * Bin regions: base below the profile top; the lip above the body; the inner
+ * column split into floor (below floorZ) and dividers; the outer ring split
+ * into four walls along the 45° corner diagonals. Together they tile space.
+ */
+function binRegions(wasm: ManifoldToplevel, solid: Manifold, params: BinParams): [PaintRegion, Manifold][] {
+  const box = solid.boundingBox();
+  const wall = Math.min(BIN_LIMITS.wall.max, Math.max(BIN_LIMITS.wall.min, params.wall));
+  const { body, floorZ } = binCavityHeight(params.gridZ, wall, params.lite);
+  // The cavity face sits exactly at `wall`; a boundary on that plane makes
+  // coplanar slivers, so the walls reach a little into the open cavity.
+  const inset = wall + 0.2;
+  const x0 = box.min[0] + inset;
+  const x1 = box.max[0] - inset;
+  const y0 = box.min[1] + inset;
+  const y1 = box.max[1] - inset;
+  const far = PAINT_FAR_MM;
+  const zBottom = box.min[2] - 1;
+  const zTop = box.max[2] + 1;
+  const prismBetween = (points: Point[], z0: number, z1: number) =>
+    polygonSection(wasm, points).extrude(z1 - z0).translate(0, 0, z0);
+  const slab = (z0: number, z1: number) =>
+    wasm.Manifold.cube([far * 2, far * 2, z1 - z0]).translate(-far, -far, z0);
+  const inner: Point[] = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  const zMid0 = BASE_PROFILE_HEIGHT_MM;
+  const zMid1 = Math.max(zMid0 + 0.01, body);
+  return [
+    ["base", slab(zBottom, zMid0)],
+    ["floor", prismBetween(inner, zMid0, Math.min(floorZ, zMid1))],
+    ["dividers", prismBetween(inner, Math.min(floorZ, zMid1), zMid1)],
+    ["wall-front", prismBetween([[x0 - far, y0 - far], [x1 + far, y0 - far], [x1, y0], [x0, y0]], zMid0, zMid1)],
+    ["wall-right", prismBetween([[x1 + far, y0 - far], [x1 + far, y1 + far], [x1, y1], [x1, y0]], zMid0, zMid1)],
+    ["wall-back", prismBetween([[x1 + far, y1 + far], [x0 - far, y1 + far], [x0, y1], [x1, y1]], zMid0, zMid1)],
+    ["wall-left", prismBetween([[x0 - far, y1 + far], [x0 - far, y0 - far], [x0, y0], [x0, y1]], zMid0, zMid1)],
+    ["lip", slab(zMid1, zTop)],
+  ];
+}
+
+/** Lid regions: the grip (handle bar or pumpkin stem) and everything else. */
+function lidRegions(wasm: ManifoldToplevel, gridX: number, gridY: number, params: LidParams): [PaintRegion, Manifold][] {
+  const far = PAINT_FAR_MM;
+  const centerX = (gridX * PITCH_MM) / 2;
+  const centerY = (gridY * PITCH_MM) / 2;
+  const socketFloorZ = BASE_PROFILE_HEIGHT_MM + LID_PLATE_MM;
+  let grip: Manifold | null = null;
+  if (params.grip === "handle") {
+    const length = LID_POCKET_MM + LID_GRIP_CHAMFER_MM * 2 + 2;
+    grip = wasm.Manifold.cube([length, LID_BAR_WIDTH_MM, LID_BAR_THICKNESS_MM]).translate(
+      centerX - length / 2,
+      centerY - LID_BAR_WIDTH_MM / 2,
+      socketFloorZ - LID_BAR_THICKNESS_MM,
+    );
+  } else if (params.stem && params.grip === "none") {
+    grip = wasm.Manifold.cylinder(PUMPKIN_STEM_MM + 1, 6, 6, 32).translate(centerX, centerY, socketFloorZ);
+  }
+  const all = wasm.Manifold.cube([far * 2, far * 2, far * 2]).translate(-far, -far, -far);
+  if (!grip) return [["lid-body", all]];
+  const bodyRegion = all.subtract(grip);
+  drop(all);
+  return [
+    ["lid-body", bodyRegion],
+    ["lid-grip", grip],
+  ];
 }

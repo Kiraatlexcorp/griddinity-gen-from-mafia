@@ -161,7 +161,7 @@ ${blocks}
 `;
 }
 
-function objectXml(id: number, part: MeshPart) {
+export function objectXml(id: number, part: MeshPart) {
   const vertices: string[] = [];
   const points = part.positions;
   for (let index = 0; index < points.length; index += 3) {
@@ -187,12 +187,12 @@ ${triangles.join("\n")}
     </object>`;
 }
 
-function fmt(value: number) {
+export function fmt(value: number) {
   const rounded = Math.round(value * 1000) / 1000;
   return String(rounded);
 }
 
-function escapeXml(value: string) {
+export function escapeXml(value: string) {
   return value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
