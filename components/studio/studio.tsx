@@ -335,7 +335,7 @@ export function Studio() {
       <SidebarInset className="min-h-0 overflow-y-auto md:overflow-hidden md:ring-1 md:ring-border">
         <HalloweenBanner />
         <header className="sticky top-0 z-10 flex h-(--header-height) shrink-0 items-center gap-2 border-b bg-background/90 px-3 backdrop-blur md:rounded-t-xl lg:px-5">
-          <h1 className="sr-only">Gridfinity Studio by ACMIE</h1>
+          <h1 className="sr-only">Gridfinity Studio</h1>
           <SidebarTrigger className="-ml-1" />
           <span aria-hidden className="mx-1 h-4 w-px bg-border" />
           <span className="font-heading text-base font-semibold">

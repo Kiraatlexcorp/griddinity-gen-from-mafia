@@ -16,10 +16,10 @@ const hubot = Hubot_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Gridfinity Studio by ACMIE",
-  applicationName: "Gridfinity Studio by ACMIE",
+  title: "Gridfinity Studio",
+  applicationName: "Gridfinity Studio",
   description:
-    "Gridfinity Studio by ACMIE: generate Gridfinity bins, baseplates and frame-only grids with puzzle or clip connectors in the browser. Download STL or a Bambu-ready 3MF.",
+    "Gridfinity Studio: generate Gridfinity bins, baseplates and frame-only grids with puzzle or clip connectors in the browser. Download STL or a Bambu-ready 3MF.",
 };
 
 export const viewport = {
@@ -33,12 +33,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${mona.variable} ${hubot.variable} dark h-full antialiased`}
+      className={`${mona.variable} ${hubot.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full bg-background text-foreground">
         <Script id="acme-theme" strategy="beforeInteractive">
-          {`try{if(localStorage.getItem("acme-theme")==="light")document.documentElement.classList.remove("dark")}catch(e){}`}
+          {`try{if(localStorage.getItem("acme-theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}`}
         </Script>
         {/* Cards always start open now; forget collapse state saved by older versions. */}
         <Script id="acme-sections" strategy="beforeInteractive">

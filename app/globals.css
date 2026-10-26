@@ -708,3 +708,15 @@
     transform: none !important;
   }
 }
+
+/* Light mode: the dark-tuned card shadows read as muddy smudges on paper; use soft, light ones. */
+:root:not(.dark) .ctx-card {
+  --hairline: rgb(0 0 0 / 0.08);
+  box-shadow:
+    0 0 0 1px var(--hairline),
+    0 1px 2px rgb(0 0 0 / 0.05),
+    0 6px 16px -10px rgb(0 0 0 / 0.14);
+}
+:root:not(.dark) .ctx-chip {
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.06);
+}
