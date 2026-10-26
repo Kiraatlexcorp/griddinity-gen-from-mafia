@@ -12,7 +12,8 @@ export type PaintState = {
   slots: Paint;
 };
 
-export const DEFAULT_PALETTE: Palette = ["#F2F2F2", "#1F1F1F", "#E8742A", "#2E7DD7"];
+/** Light grey, charcoal, orange, blue: readable side by side in the viewer. */
+export const DEFAULT_PALETTE: Palette = ["#D9D9D9", "#3A3A3A", "#F28C28", "#2F80ED"];
 export const DEFAULT_PAINT: PaintState = { on: false, palette: DEFAULT_PALETTE, slots: {} };
 
 export const PAINT_REGIONS: Record<"bin" | "lid" | "baseplate", { region: PaintRegion; label: string }[]> = {
@@ -72,5 +73,15 @@ export function decodePaint(params: URLSearchParams): PaintState {
     const slot = Number(slotRaw);
     if (ALL_REGIONS.has(region) && isSlot(slot)) slots[region as PaintRegion] = slot;
   }
-  return { on: params.get("paint") === "1", palette, slots };
+  // Paint view comes on by itself once any part has a colour.
+  return { on: params.get("paint") === "1" || Object.keys(slots).length > 0, palette, slots };
+}
+
+export function labelOf(region: PaintRegion | undefined) {
+  if (!region) return null;
+  for (const list of Object.values(PAINT_REGIONS)) {
+    const hit = list.find((item) => item.region === region);
+    if (hit) return hit.label;
+  }
+  return null;
 }

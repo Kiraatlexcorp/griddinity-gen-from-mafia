@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { ManifoldToplevel } from "manifold-3d";
 import { strFromU8, unzipSync } from "fflate";
 import { loadManifold } from "@/lib/geometry/manifold";
-import { buildBinSolid, buildJob } from "@/lib/geometry/build";
+import { PAINT_GAP_MM, buildBinSolid, buildJob } from "@/lib/geometry/build";
 import type { MeshPart } from "@/lib/geometry/protocol";
 import { DEFAULT_BIN, DEFAULT_STATE } from "@/lib/params";
 import { paintedTo3mf } from "@/lib/export/bambu3mf";
@@ -49,7 +49,7 @@ describe("paint split", () => {
     const box = solid.boundingBox();
     const parts = buildJob(wasm, { kind: "bin", params: bin2x2, paint: true }, "preview");
     const base = parts.find((part) => part.region === "base")!;
-    const cut = solid.translate(-box.min[0], -box.min[1], -box.min[2]).trimByPlane([0, 0, -1], -4.75);
+    const cut = solid.translate(-box.min[0], -box.min[1], -box.min[2]).trimByPlane([0, 0, -1], -(4.75 + PAINT_GAP_MM));
     expect(volumeOf(base)).toBeCloseTo(cut.volume(), 0);
     cut.delete();
     solid.delete();

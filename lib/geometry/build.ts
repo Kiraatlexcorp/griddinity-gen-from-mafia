@@ -1254,8 +1254,10 @@ export function buildBaseplate(
         const regions: [PaintRegion, Manifold][] =
           socketFloorZ > 0.01
             ? [
-                ["plate-floor", slab(box.min[2] - 1, socketFloorZ)],
-                ["plate-ribs", slab(socketFloorZ, box.max[2] + 1)],
+                // The floor owns the pocket bottoms; the cut sits just above
+                // them so no cutter face is coplanar with a real face.
+                ["plate-floor", slab(box.min[2] - 1, socketFloorZ + PAINT_GAP_MM)],
+                ["plate-ribs", slab(socketFloorZ + PAINT_GAP_MM, box.max[2] + 1)],
               ]
             : [["plate-ribs", slab(box.min[2] - 1, box.max[2] + 1)]];
         parts.push(...paintSplit(wasm, solid, pieceName, regions, piece.originX, piece.originY));
@@ -1410,6 +1412,8 @@ export function paintSplit(
 }
 
 const PAINT_FAR_MM = 2000;
+/** How far region boundaries stay off the model's own faces. */
+export const PAINT_GAP_MM = 0.25;
 
 /**
  * Bin regions: base below the profile top; the lip above the body; the inner
@@ -1422,7 +1426,7 @@ function binRegions(wasm: ManifoldToplevel, solid: Manifold, params: BinParams):
   const { body, floorZ } = binCavityHeight(params.gridZ, wall, params.lite);
   // The cavity face sits exactly at `wall`; a boundary on that plane makes
   // coplanar slivers, so the walls reach a little into the open cavity.
-  const inset = wall + 0.2;
+  const inset = wall + PAINT_GAP_MM;
   const x0 = box.min[0] + inset;
   const x1 = box.max[0] - inset;
   const y0 = box.min[1] + inset;
@@ -1435,12 +1439,16 @@ function binRegions(wasm: ManifoldToplevel, solid: Manifold, params: BinParams):
   const slab = (z0: number, z1: number) =>
     wasm.Manifold.cube([far * 2, far * 2, z1 - z0]).translate(-far, -far, z0);
   const inner: Point[] = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
-  const zMid0 = BASE_PROFILE_HEIGHT_MM;
-  const zMid1 = Math.max(zMid0 + 0.01, body);
+  // Every horizontal boundary sits PAINT_GAP_MM off the model's own faces
+  // (base top, cavity floor, lip start), so no region cutter is coplanar
+  // with a real face and no part gets a zero-thickness sheet that z-fights.
+  const zMid0 = BASE_PROFILE_HEIGHT_MM + PAINT_GAP_MM;
+  const zMid1 = Math.max(zMid0 + 0.01, body - PAINT_GAP_MM);
+  const zFloor = Math.min(floorZ + PAINT_GAP_MM, zMid1);
   return [
     ["base", slab(zBottom, zMid0)],
-    ["floor", prismBetween(inner, zMid0, Math.min(floorZ, zMid1))],
-    ["dividers", prismBetween(inner, Math.min(floorZ, zMid1), zMid1)],
+    ["floor", prismBetween(inner, zMid0, zFloor)],
+    ["dividers", prismBetween(inner, zFloor, zMid1)],
     ["wall-front", prismBetween([[x0 - far, y0 - far], [x1 + far, y0 - far], [x1, y0], [x0, y0]], zMid0, zMid1)],
     ["wall-right", prismBetween([[x1 + far, y0 - far], [x1 + far, y1 + far], [x1, y1], [x1, y0]], zMid0, zMid1)],
     ["wall-back", prismBetween([[x1 + far, y1 + far], [x0 - far, y1 + far], [x0, y1], [x1, y1]], zMid0, zMid1)],
