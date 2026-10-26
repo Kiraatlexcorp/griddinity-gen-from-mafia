@@ -73,7 +73,7 @@ function StatBar({ stats, inline = false }: { stats: Stat[]; inline?: boolean })
       className={
         inline
           ? "hidden min-w-0 flex-1 items-center gap-x-4 overflow-hidden text-xs lg:flex"
-          : "flex shrink-0 flex-wrap items-center gap-x-5 gap-y-1 rounded-lg border bg-card px-3 py-1.5 text-xs lg:hidden"
+          : "hidden shrink-0 flex-wrap items-center gap-x-5 gap-y-1 rounded-lg border bg-card px-3 py-1.5 text-xs md:flex lg:hidden"
       }
     >
       {stats.map((stat) => (
@@ -399,6 +399,16 @@ export function Studio() {
               <Link2 data-icon="inline-start" />
               <span className="hidden sm:inline lg:hidden xl:inline">{copied ? "Copied" : "Copy link"}</span>
             </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="rounded-full md:hidden"
+              aria-label="Download Bambu A1 print profile"
+              onClick={() => void downloadA1Presets().catch((e: Error) => setExportError(e.message))}
+            >
+              <Download data-icon="inline-start" />A1
+            </Button>
             <Button type="button" variant="ghost" size="icon-sm" aria-label="Switch theme" onClick={toggleTheme}>
               <Sun className="hidden dark:block" />
               <Moon className="dark:hidden" />
@@ -496,7 +506,6 @@ export function Studio() {
         onStl={() => void save("stl")}
         on3mf={() => void save("3mf")}
         onProject={() => void saveProject()}
-        onProfile={() => void downloadA1Presets().catch((e: Error) => setExportError(e.message))}
       />
       <Toast message={toast.message} open={toast.open} />
     </SidebarProvider>
@@ -510,14 +519,12 @@ function MobileBar({
   onStl,
   on3mf,
   onProject,
-  onProfile,
-}: {
+  }: {
   disabled: boolean;
   exporting: string | null;
   onStl: () => void;
   on3mf: () => void;
   onProject: () => void;
-  onProfile: () => void;
 }) {
   const { setOpenMobile } = useSidebar();
   const icon = (kind: string) => (exporting === kind ? <Spinner data-icon="inline-start" /> : <Download data-icon="inline-start" />);
@@ -525,23 +532,20 @@ function MobileBar({
     <nav
       aria-label="Actions"
       data-testid="mobile-bar"
-      className="fixed inset-x-0 bottom-0 z-20 flex items-center gap-2 overflow-x-auto border-t bg-background/95 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden"
+      className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 gap-1.5 border-t bg-background/95 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden"
     >
-      <Button type="button" size="lg" className="h-11 shrink-0 rounded-full" onClick={() => setOpenMobile(true)}>
+      <Button type="button" size="lg" className="h-11 rounded-full px-2" onClick={() => setOpenMobile(true)}>
         <SlidersHorizontal data-icon="inline-start" />
         Edit
       </Button>
-      <Button type="button" variant="outline" size="lg" className="h-11 shrink-0 rounded-full" disabled={disabled} onClick={onStl}>
+      <Button type="button" variant="outline" size="lg" className="h-11 rounded-full px-2" disabled={disabled} onClick={onStl}>
         {icon("stl")}STL
       </Button>
-      <Button type="button" variant="outline" size="lg" className="h-11 shrink-0 rounded-full" disabled={disabled} onClick={on3mf}>
+      <Button type="button" variant="outline" size="lg" className="h-11 rounded-full px-2" disabled={disabled} onClick={on3mf}>
         {icon("3mf")}3MF
       </Button>
-      <Button type="button" variant="outline" size="lg" className="h-11 shrink-0 rounded-full" disabled={disabled} onClick={onProject}>
-        {icon("project")}3 plates
-      </Button>
-      <Button type="button" variant="ghost" size="lg" className="h-11 shrink-0 rounded-full px-3" aria-label="Download Bambu A1 print profile" onClick={onProfile}>
-        A1
+      <Button type="button" variant="outline" size="lg" className="h-11 rounded-full px-2" disabled={disabled} onClick={onProject}>
+        {icon("project")}Project
       </Button>
     </nav>
   );

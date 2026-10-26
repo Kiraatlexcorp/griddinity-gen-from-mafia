@@ -746,3 +746,9 @@
 }
 @keyframes suggest-shift { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
 @media (prefers-reduced-motion: reduce) { .suggest-pill { animation: none; transition: none; } }
+
+/* Phone settings sheet: keep the 3D view visible and live above it. */
+@media (max-width: 767px) {
+  [data-slot="sheet-overlay"] { background: transparent !important; backdrop-filter: none !important; }
+  [data-mobile="true"] [data-slot="sidebar-header"] { display: none; }
+}
