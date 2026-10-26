@@ -8,7 +8,7 @@ import { Segmented } from "@/components/studio/segmented";
 
 import { MafiaLogo } from "@/components/studio/mafia-logo";
 import { useEffect, useState } from "react";
-import { Box, Download, Grid3x3, Link2, Moon, PanelTop, Sun } from "lucide-react";
+import { Box, Download, Grid3x3, Link2, Moon, PanelTop, SlidersHorizontal, Sun } from "lucide-react";
 import { ColorsCard } from "@/components/studio/colors-card";
 import { DEFAULT_PAINT, labelOf, slotOf, type PaintState, type Slot } from "@/lib/paint";
 import type * as React from "react";
@@ -33,6 +33,7 @@ import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
 import { download3mf, downloadPainted3mf, downloadA1Presets, downloadProject3mf, downloadStls } from "@/lib/export/download";
@@ -402,15 +403,15 @@ export function Studio() {
               <Sun className="hidden dark:block" />
               <Moon className="dark:hidden" />
             </Button>
-            <Button type="button" size="sm" className="rounded-full" disabled={!canExport} onClick={() => void save("stl")}>
+            <Button type="button" size="sm" className="hidden rounded-full md:inline-flex" disabled={!canExport} onClick={() => void save("stl")}>
               {exportIcon("stl")}
               STL
             </Button>
-            <Button type="button" variant="outline" size="sm" className="rounded-full" disabled={!canExport} onClick={() => void save("3mf")}>
+            <Button type="button" variant="outline" size="sm" className="hidden rounded-full md:inline-flex" disabled={!canExport} onClick={() => void save("3mf")}>
               {exportIcon("3mf")}
               3MF
             </Button>
-            <Button type="button" variant="outline" size="sm" className="rounded-full" disabled={!canExport} aria-label="Download project (3 plates)" title="Baseplate, bin and lid on 3 plates, A1 profile embedded" onClick={() => void saveProject()}>
+            <Button type="button" variant="outline" size="sm" className="hidden rounded-full md:inline-flex" disabled={!canExport} aria-label="Download project (3 plates)" title="Baseplate, bin and lid on 3 plates, A1 profile embedded" onClick={() => void saveProject()}>
               {exportIcon("project")}
               <span className="hidden sm:inline">Project (3 plates)</span>
               <span className="sm:hidden">Project</span>
@@ -419,7 +420,7 @@ export function Studio() {
               type="button"
               variant="ghost"
               size="sm"
-              className="rounded-full"
+              className="hidden rounded-full md:inline-flex"
               aria-label="Download Bambu A1 print profile"
               title="ⓘ Bambu Studio: New Project → A1 0.4 nozzle → File → Import → Import Configs"
               onClick={() => void downloadA1Presets().catch((e: Error) => setExportError(e.message))}
@@ -431,7 +432,19 @@ export function Studio() {
             </Button>
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-3 md:min-h-0 lg:p-5">
+        <div className="flex flex-1 flex-col gap-3 p-3 pb-24 md:min-h-0 md:gap-4 md:pb-3 lg:p-5">
+          <div className="md:hidden">
+            <Segmented
+              aria-label="Part"
+              value={state.tab}
+              options={[
+                { value: "baseplate", label: <><Grid3x3 data-icon="inline-start" />Baseplate</> },
+                { value: "bin", label: <><Box data-icon="inline-start" />Bin</> },
+                { value: "lid", label: <><PanelTop data-icon="inline-start" />Lid</> },
+              ]}
+              onChange={(tab) => setState((current) => ({ ...current, tab }))}
+            />
+          </div>
           <StatBar stats={stats} />
           {exportError ? (
             <Alert variant="destructive">
@@ -477,7 +490,59 @@ export function Studio() {
           </Card>
         </div>
       </SidebarInset>
+      <MobileBar
+        disabled={!canExport}
+        exporting={exporting}
+        onStl={() => void save("stl")}
+        on3mf={() => void save("3mf")}
+        onProject={() => void saveProject()}
+        onProfile={() => void downloadA1Presets().catch((e: Error) => setExportError(e.message))}
+      />
       <Toast message={toast.message} open={toast.open} />
     </SidebarProvider>
+  );
+}
+
+/** Phone-only bottom bar: open settings and export with thumb-size buttons. */
+function MobileBar({
+  disabled,
+  exporting,
+  onStl,
+  on3mf,
+  onProject,
+  onProfile,
+}: {
+  disabled: boolean;
+  exporting: string | null;
+  onStl: () => void;
+  on3mf: () => void;
+  onProject: () => void;
+  onProfile: () => void;
+}) {
+  const { setOpenMobile } = useSidebar();
+  const icon = (kind: string) => (exporting === kind ? <Spinner data-icon="inline-start" /> : <Download data-icon="inline-start" />);
+  return (
+    <nav
+      aria-label="Actions"
+      data-testid="mobile-bar"
+      className="fixed inset-x-0 bottom-0 z-20 flex items-center gap-2 overflow-x-auto border-t bg-background/95 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden"
+    >
+      <Button type="button" size="lg" className="h-11 shrink-0 rounded-full" onClick={() => setOpenMobile(true)}>
+        <SlidersHorizontal data-icon="inline-start" />
+        Edit
+      </Button>
+      <Button type="button" variant="outline" size="lg" className="h-11 shrink-0 rounded-full" disabled={disabled} onClick={onStl}>
+        {icon("stl")}STL
+      </Button>
+      <Button type="button" variant="outline" size="lg" className="h-11 shrink-0 rounded-full" disabled={disabled} onClick={on3mf}>
+        {icon("3mf")}3MF
+      </Button>
+      <Button type="button" variant="outline" size="lg" className="h-11 shrink-0 rounded-full" disabled={disabled} onClick={onProject}>
+        {icon("project")}3 plates
+      </Button>
+      <Button type="button" variant="ghost" size="lg" className="h-11 shrink-0 rounded-full px-3" aria-label="Download Bambu A1 print profile" onClick={onProfile}>
+        A1
+      </Button>
+    </nav>
   );
 }

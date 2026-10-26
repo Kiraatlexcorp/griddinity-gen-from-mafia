@@ -447,7 +447,7 @@ export function Preview({
           {hoverLabel}
         </div>
       ) : null}
-      <div className={printing ? "hidden" : "absolute bottom-4 left-4 flex items-center gap-2"}>
+      <div className={printing ? "hidden" : "absolute bottom-3 left-3 flex items-center gap-2 md:bottom-4 md:left-4"}>
         {toolbar}
         <button
           type="button"
@@ -481,7 +481,7 @@ export function Preview({
         </button>
       </div>
       {(stats || suggestions?.length) && !printing ? (
-        <div className="pointer-events-none absolute right-4 bottom-4 flex max-w-[min(60%,32rem)] flex-col items-end gap-2">
+        <div className="pointer-events-none absolute right-3 bottom-13 left-3 flex flex-col items-end gap-2 md:right-4 md:bottom-4 md:left-auto md:max-w-[min(60%,32rem)]">
           {suggestions?.length ? (
             <div data-testid="view-suggestions" className="pointer-events-auto flex flex-col items-end gap-1.5">
               {suggestions.map((s) => (

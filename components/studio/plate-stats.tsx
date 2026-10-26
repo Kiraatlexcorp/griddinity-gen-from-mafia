@@ -16,7 +16,7 @@ export function PlateStats({ plate, plan }: { plate: BaseplateParams; plan: Retu
       data-testid="plate-stats"
       className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 rounded-xl border border-border bg-background/85 px-3 py-1.5 text-xs backdrop-blur"
     >
-      <dl className="flex items-center gap-4">
+      <dl className="flex flex-wrap items-center gap-x-4 gap-y-1">
         {[
           ["Grid", `${plan.gridX} × ${plan.gridY}`],
           ["Size", `${formatMm(plan.outerW)} × ${formatMm(plan.outerD)} mm`],
@@ -24,7 +24,7 @@ export function PlateStats({ plate, plan }: { plate: BaseplateParams; plan: Retu
         ].map(([label, value]) => (
           <div key={label} className="flex items-baseline gap-1.5">
             <dt className="text-muted-foreground">{label}</dt>
-            <dd className="font-mono tabular-nums">{value}</dd>
+            <dd className="font-mono whitespace-nowrap tabular-nums">{value}</dd>
           </div>
         ))}
       </dl>
