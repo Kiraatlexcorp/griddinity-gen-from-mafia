@@ -51,10 +51,12 @@ function PartMesh({
   part,
   color,
   quality,
+  onPick,
 }: {
   part: MeshPart;
   color: string;
   quality: PreviewQuality;
+  onPick?: (part: MeshPart) => void;
 }) {
   const geometry = useMemo(
     () => previewGeometry(part, quality),
@@ -64,7 +66,21 @@ function PartMesh({
   useEffect(() => () => geometry.dispose(), [geometry]);
 
   return (
-    <mesh geometry={geometry}>
+    <mesh
+      geometry={geometry}
+      onClick={
+        onPick
+          ? (event) => {
+              // Ignore the click that ends an orbit drag.
+              if (event.delta > 4) return;
+              event.stopPropagation();
+              onPick(part);
+            }
+          : undefined
+      }
+      onPointerOver={onPick ? () => (document.body.style.cursor = "pointer") : undefined}
+      onPointerOut={onPick ? () => (document.body.style.cursor = "") : undefined}
+    >
       {quality === "high" ? (
         <meshPhysicalMaterial
           color={color}
@@ -246,7 +262,13 @@ export function Preview({
   quality,
   toolbar,
   stats,
+  paint,
+  overlay,
 }: {
+  /** Paint mode: colour parts by their AMS slot and pick them on click. */
+  paint?: { palette: string[]; colorOf: (part: MeshPart) => string | null; onPick: (part: MeshPart) => void };
+  /** Floating panel along the top centre of the viewer. */
+  overlay?: React.ReactNode;
   /** Overlay strip along the bottom right of the viewer. */
   stats?: React.ReactNode;
   parts: MeshPart[];
@@ -324,7 +346,8 @@ export function Preview({
           key={part.name}
           part={part}
           quality={quality}
-          color={colors[index % colors.length]}
+          color={paint?.colorOf(part) ?? colors[index % colors.length]}
+          onPick={paint?.onPick}
         />
       ))}
       <Fit parts={parts} view={view} home={homeTick} />
@@ -392,6 +415,9 @@ export function Preview({
           {quad ? "Single" : "Quad"}
         </button>
       </div>
+      {overlay ? (
+        <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-3">{overlay}</div>
+      ) : null}
       {stats ? (
         <div className="pointer-events-none absolute right-4 bottom-4 max-w-[min(60%,32rem)]">
           {stats}

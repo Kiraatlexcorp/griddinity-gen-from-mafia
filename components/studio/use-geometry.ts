@@ -120,12 +120,12 @@ export function useGeometry(job: GeometryJob, previewQuality: Quality = "preview
     return () => window.clearTimeout(timer);
   }, [send, signature]);
 
-  const exportMesh = useCallback(() => {
+  const exportMesh = useCallback((override?: GeometryJob) => {
     const id = ++seq.current;
     const request: WorkerRequest = {
       id,
       quality: "export",
-      job: jobRef.current,
+      job: override ?? jobRef.current,
     };
     return new Promise<MeshPart[]>((resolve, reject) => {
       waiters.current.set(id, { resolve, reject });

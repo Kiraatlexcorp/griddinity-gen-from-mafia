@@ -8,7 +8,10 @@ import { Segmented } from "@/components/studio/segmented";
 
 import { MafiaLogo } from "@/components/studio/mafia-logo";
 import { useEffect, useState } from "react";
-import { Box, Download, Grid3x3, Link2, Moon, PanelTop, Sun } from "lucide-react";
+import { Box, Download, Grid3x3, Link2, Moon, Paintbrush, PanelTop, Sun } from "lucide-react";
+import { PaintBar } from "@/components/studio/paint-bar";
+import { DEFAULT_PAINT, slotOf, type PaintState, type Slot } from "@/lib/paint";
+import { cn } from "@/lib/utils";
 import type * as React from "react";
 import { PITCH_MM } from "@/lib/spec";
 import { BinControls, LidControls, PlateControls } from "@/components/studio/controls";
@@ -34,7 +37,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
-import { download3mf, downloadStls } from "@/lib/export/download";
+import { download3mf, downloadPainted3mf, downloadStls } from "@/lib/export/download";
 import { binFootprint, binHeight, planBaseplate, planBinSplit } from "@/lib/fit";
 import {
   decodeState,
@@ -97,12 +100,16 @@ export function Studio() {
   const [exportError, setExportError] = useState<string | null>(null);
 
   const [previewQuality, setPreviewQuality] = usePreviewQuality();
+  const paint = state.paint ?? DEFAULT_PAINT;
+  const [activeSlot, setActiveSlot] = useState<Slot>(2);
+  const setPaint = (next: PaintState) => setState((current) => ({ ...current, paint: next }));
+  const paintFlag = paint.on ? { paint: true } : {};
   const job: GeometryJob =
     state.tab === "bin"
-      ? { kind: "bin", params: state.bin, bed: state.plate.bed }
+      ? { kind: "bin", params: state.bin, bed: state.plate.bed, ...paintFlag }
       : state.tab === "lid"
-        ? { kind: "lid", gridX: state.bin.gridX, gridY: state.bin.gridY, half: state.bin.half, bed: state.plate.bed, params: state.lid }
-        : { kind: "baseplate", params: state.plate };
+        ? { kind: "lid", gridX: state.bin.gridX, gridY: state.bin.gridY, half: state.bin.half, bed: state.plate.bed, params: state.lid, ...paintFlag }
+        : { kind: "baseplate", params: state.plate, ...paintFlag };
   const { parts, status, ms, error, exportMesh } = useGeometry(
     job,
     geometryQuality(previewQuality),
@@ -145,9 +152,14 @@ export function Studio() {
     setExporting(kind);
     setExportError(null);
     try {
-      const meshes = await exportMesh();
-      if (kind === "stl") downloadStls(meshes, stem);
-      else download3mf(meshes, state.plate.bed, stem, stem);
+      if (kind === "stl") {
+        // STL stays one plain body per print, whatever the paint.
+        downloadStls(await exportMesh(paint.on ? { ...job, paint: false } : undefined), stem);
+      } else if (paint.on) {
+        downloadPainted3mf(await exportMesh(), paint.slots, paint.palette, state.plate.bed, stem, stem);
+      } else {
+        download3mf(await exportMesh(), state.plate.bed, stem, stem);
+      }
       showToast(`${stem}.${kind} downloaded`);
     } catch (caught) {
       setExportError(caught instanceof Error ? caught.message : "Export failed.");
@@ -377,7 +389,49 @@ export function Studio() {
               ms={ms}
               error={error}
               quality={previewQuality}
-              toolbar={<QualityToggle value={previewQuality} onChange={setPreviewQuality} />}
+              toolbar={
+                <>
+                  <QualityToggle value={previewQuality} onChange={setPreviewQuality} />
+                  <button
+                    type="button"
+                    aria-pressed={paint.on}
+                    title={paint.on ? "Back to plain preview" : "Colour each part by AMS slot for a multi-colour 3MF"}
+                    onClick={() => setPaint({ ...paint, on: !paint.on })}
+                    className={cn(
+                      "flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs backdrop-blur transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                      paint.on
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-border bg-background/80 text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    <Paintbrush className="size-3.5" aria-hidden />
+                    Paint
+                  </button>
+                </>
+              }
+              paint={
+                paint.on
+                  ? {
+                      palette: paint.palette,
+                      colorOf: (part) => (part.region ? paint.palette[slotOf(paint.slots, part.region) - 1] : null),
+                      onPick: (part) => {
+                        if (part.region) setPaint({ ...paint, slots: { ...paint.slots, [part.region]: activeSlot } });
+                      },
+                    }
+                  : undefined
+              }
+              overlay={
+                paint.on ? (
+                  <PaintBar
+                    kind={state.tab}
+                    paint={paint}
+                    active={activeSlot}
+                    present={new Set(parts.flatMap((part) => (part.region ? [part.region] : [])))}
+                    onActive={setActiveSlot}
+                    onChange={setPaint}
+                  />
+                ) : undefined
+              }
               stats={state.tab === "baseplate" ? <PlateStats plate={state.plate} plan={plan} /> : undefined}
             />
           </Card>
