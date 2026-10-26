@@ -2,6 +2,20 @@ import { zipSync } from "fflate";
 import type { MeshPart } from "@/lib/geometry/protocol";
 import { meshTo3mf } from "@/lib/export/threemf";
 import { meshToStl } from "@/lib/export/stl";
+import { paintedTo3mf } from "@/lib/export/bambu3mf";
+import type { Paint, Palette } from "@/lib/paint";
+
+export function downloadPainted3mf(
+  parts: MeshPart[],
+  paint: Paint,
+  palette: Palette,
+  bed: number,
+  filename: string,
+  title: string,
+) {
+  const bytes = paintedTo3mf(parts, paint, palette, bed, title);
+  downloadBlob(asBlob(bytes, "model/3mf"), filename.endsWith(".3mf") ? filename : `${filename}.3mf`);
+}
 
 function asBlob(bytes: Uint8Array, type: string) {
   const copy = new Uint8Array(bytes.byteLength);

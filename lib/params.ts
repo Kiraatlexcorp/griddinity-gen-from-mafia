@@ -19,6 +19,7 @@ import {
   type PlateStyle,
 } from "@/lib/spec";
 import { cleanLabelText } from "@/lib/geometry/pixel-font";
+import { decodePaint, encodePaint, type PaintState } from "@/lib/paint";
 
 export type StudioTab = "baseplate" | "bin" | "lid";
 export type LengthUnit = "mm" | "grid";
@@ -105,6 +106,8 @@ export type StudioState = {
   plate: BaseplateParams;
   bin: BinParams;
   lid: LidParams;
+  /** Per-part AMS slot colours; absent means paint mode was never touched. */
+  paint?: PaintState;
 };
 
 export const DEFAULT_PLATE: BaseplateParams = {
@@ -326,6 +329,7 @@ export function decodeState(search: string): StudioState {
       grip: decodeGrip(params),
       ...(params.get("lstem") === "1" ? { stem: true } : {}),
     },
+    ...(params.has("paint") || params.has("pal") || params.has("ps") ? { paint: decodePaint(params) } : {}),
   };
 }
 
@@ -367,6 +371,7 @@ export function encodeState(state: StudioState): string {
   if (state.bin.shell === "pumpkin" && state.bin.face) params.set("face", "1");
   params.set("lgrip", GRIP_CODES[state.lid.grip]);
   if (state.lid.stem) params.set("lstem", "1");
+  if (state.paint) encodePaint(state.paint, params);
   return params.toString();
 }
 
