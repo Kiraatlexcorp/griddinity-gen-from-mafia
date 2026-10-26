@@ -1,6 +1,8 @@
 "use client";
 
 import { HorrorBanner } from "@/components/studio/horror-banner";
+import { PlateStats } from "@/components/studio/plate-stats";
+import { HalloweenBanner } from "@/components/studio/halloween-banner";
 
 import { Segmented } from "@/components/studio/segmented";
 
@@ -331,6 +333,7 @@ export function Studio() {
       </Sidebar>
 
       <SidebarInset className="min-h-0 overflow-y-auto md:overflow-hidden md:ring-1 md:ring-border">
+        <HalloweenBanner />
         <header className="sticky top-0 z-10 flex h-(--header-height) shrink-0 items-center gap-2 border-b bg-background/90 px-3 backdrop-blur md:rounded-t-xl lg:px-5">
           <h1 className="sr-only">Gridfinity Studio by ACMIE</h1>
           <SidebarTrigger className="-ml-1" />
@@ -375,6 +378,7 @@ export function Studio() {
               error={error}
               quality={previewQuality}
               toolbar={<QualityToggle value={previewQuality} onChange={setPreviewQuality} />}
+              stats={state.tab === "baseplate" ? <PlateStats plate={state.plate} plan={plan} /> : undefined}
             />
           </Card>
         </div>

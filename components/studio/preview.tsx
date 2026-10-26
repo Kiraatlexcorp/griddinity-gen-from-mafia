@@ -1,16 +1,42 @@
 "use client";
 
-import { Environment, Grid, Lightformer, OrbitControls } from "@react-three/drei";
-import { Canvas, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import {
+  Environment,
+  Grid,
+  Lightformer,
+  OrbitControls,
+} from "@react-three/drei";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { ArrowDownToLine, Grid2x2, Square } from "lucide-react";
 import * as THREE from "three";
 import type * as React from "react";
 import type { MeshPart } from "@/lib/geometry/protocol";
 import { previewGeometry } from "@/lib/geometry/preview-mesh";
 import type { PreviewQuality } from "@/lib/preview-quality";
 
-const FILAMENT = ["#d4d4d4", "#c8c8c8", "#dcdcdc", "#bdbdbd", "#d0d0d0", "#c4c4c4"];
-const FILAMENT_DARK = ["#b8b8b8", "#a8a8a8", "#c4c4c4", "#9c9c9c", "#b0b0b0", "#a2a2a2"];
+const FILAMENT = [
+  "#d4d4d4",
+  "#c8c8c8",
+  "#dcdcdc",
+  "#bdbdbd",
+  "#d0d0d0",
+  "#c4c4c4",
+];
+const FILAMENT_DARK = [
+  "#b8b8b8",
+  "#a8a8a8",
+  "#c4c4c4",
+  "#9c9c9c",
+  "#b0b0b0",
+  "#a2a2a2",
+];
 
 type Orbit = {
   target: THREE.Vector3;
@@ -28,7 +54,10 @@ function PartMesh({
   color: string;
   quality: PreviewQuality;
 }) {
-  const geometry = useMemo(() => previewGeometry(part, quality), [part, quality]);
+  const geometry = useMemo(
+    () => previewGeometry(part, quality),
+    [part, quality],
+  );
 
   useEffect(() => () => geometry.dispose(), [geometry]);
 
@@ -61,6 +90,7 @@ function frameCamera(
   camera: THREE.PerspectiveCamera,
   controls: Orbit | null,
   parts: MeshPart[],
+  direction: THREE.Vector3 = new THREE.Vector3(0.82, 0.62, 0.95),
 ) {
   if (parts.length === 0) return;
   const box = new THREE.Box3();
@@ -82,7 +112,7 @@ function frameCamera(
   const distance = (sphere.radius / Math.sin(fov / 2)) * 0.92;
   camera.position
     .copy(sphere.center)
-    .add(new THREE.Vector3(0.82, 0.62, 0.95).normalize().multiplyScalar(distance));
+    .add(direction.clone().normalize().multiplyScalar(distance));
   camera.near = Math.max(0.05, distance / 200);
   camera.far = distance * 30;
   camera.updateProjectionMatrix();
@@ -94,15 +124,61 @@ function frameCamera(
   }
 }
 
-function Fit({ parts }: { parts: MeshPart[] }) {
+type ViewName = "perspective" | "top" | "front" | "right";
+const VIEW_DIRECTIONS: Record<ViewName, [number, number, number]> = {
+  perspective: [0.82, 0.62, 0.95],
+  top: [0, 1, 0.001],
+  front: [0, 0, 1],
+  right: [1, 0, 0],
+};
+
+function Fit({
+  parts,
+  view = "perspective",
+}: {
+  parts: MeshPart[];
+  view?: ViewName;
+}) {
   const camera = useThree((state) => state.camera);
   const controls = useThree((state) => state.controls) as Orbit | null;
 
   useEffect(() => {
     if (!(camera instanceof THREE.PerspectiveCamera)) return;
-    frameCamera(camera, controls, parts);
-  }, [camera, controls, parts]);
+    frameCamera(
+      camera,
+      controls,
+      parts,
+      new THREE.Vector3(...VIEW_DIRECTIONS[view]),
+    );
+  }, [camera, controls, parts, view]);
 
+  return null;
+}
+
+/** Ground grid that hides while the camera is below it, so the underside stays visible. */
+function GroundGrid(props: React.ComponentProps<typeof Grid>) {
+  const ref = useRef<THREE.Mesh>(null);
+  useFrame(({ camera }) => {
+    if (ref.current) ref.current.visible = camera.position.y > 0;
+  });
+  return <Grid ref={ref} {...props} />;
+}
+
+/** Each bump of `tick` swings the camera straight under the model. */
+function BottomView({ tick }: { tick: number }) {
+  const camera = useThree((state) => state.camera);
+  const controls = useThree((state) => state.controls) as Orbit | null;
+  useEffect(() => {
+    if (!tick || !controls) return;
+    const distance = camera.position.distanceTo(controls.target);
+    camera.position.set(
+      controls.target.x,
+      controls.target.y - distance,
+      controls.target.z + 0.01,
+    );
+    camera.lookAt(controls.target);
+    controls.update();
+  }, [tick, camera, controls]);
   return null;
 }
 
@@ -140,7 +216,10 @@ export function Preview({
   error,
   quality,
   toolbar,
+  stats,
 }: {
+  /** Overlay strip along the bottom right of the viewer. */
+  stats?: React.ReactNode;
   parts: MeshPart[];
   quality: PreviewQuality;
   toolbar?: React.ReactNode;
@@ -149,61 +228,142 @@ export function Preview({
   error: string | null;
 }) {
   const dark = useDarkPaper();
+  const [bottomTick, setBottomTick] = useState(0);
+  const [quad, setQuad] = useState(false);
   const colors = dark ? FILAMENT_DARK : FILAMENT;
   const badge =
-    status === "rendering" ? "RENDERING" : status === "error" ? "FAILED" : ms > 0 ? `${ms} ms` : "";
+    status === "rendering"
+      ? "RENDERING"
+      : status === "error"
+        ? "FAILED"
+        : ms > 0
+          ? `${ms} ms`
+          : "";
+
+  const scene = (view: ViewName) => (
+    <Canvas
+      key={`${quality}-${view}`}
+      className="h-full w-full"
+      dpr={quality === "high" ? [1, 2] : [1, 1.25]}
+      gl={{ alpha: true, antialias: quality === "high" }}
+      camera={{ fov: 32, position: [180, 130, 190], near: 0.1, far: 5000 }}
+    >
+      <ambientLight intensity={0.72} />
+      <directionalLight position={[80, 140, 60]} intensity={1.15} />
+      <directionalLight position={[-70, 40, -40]} intensity={0.35} />
+      {quality === "high" ? (
+        <Environment resolution={64} frames={1}>
+          <Lightformer
+            form="rect"
+            intensity={1.4}
+            position={[0, 6, 0]}
+            rotation-x={Math.PI / 2}
+            scale={[12, 12, 1]}
+          />
+          <Lightformer
+            form="rect"
+            intensity={0.6}
+            position={[-6, 2, 4]}
+            rotation-y={Math.PI / 3}
+            scale={[8, 4, 1]}
+          />
+          <Lightformer
+            form="rect"
+            intensity={0.4}
+            position={[6, 1, -4]}
+            rotation-y={-Math.PI / 2}
+            scale={[8, 4, 1]}
+          />
+        </Environment>
+      ) : null}
+      <GroundGrid
+        args={[2400, 2400]}
+        cellSize={42}
+        cellThickness={0.55}
+        cellColor={dark ? "#262626" : "#e5e5e5"}
+        sectionSize={168}
+        sectionThickness={1.05}
+        sectionColor={dark ? "#404040" : "#a3a3a3"}
+        fadeDistance={1100}
+        fadeStrength={1.4}
+        infiniteGrid
+        position={[0, -0.25, 0]}
+      />
+      {parts.map((part, index) => (
+        <PartMesh
+          key={part.name}
+          part={part}
+          quality={quality}
+          color={colors[index % colors.length]}
+        />
+      ))}
+      <Fit parts={parts} view={view} />
+      <OrbitControls
+        makeDefault
+        enableDamping
+        dampingFactor={0.14}
+        maxPolarAngle={Math.PI - 0.02}
+        minPolarAngle={0.02}
+      />
+      {view === "perspective" ? <BottomView tick={bottomTick} /> : null}
+    </Canvas>
+  );
 
   return (
     <div className="absolute inset-0 bg-background">
-      <Canvas
-        key={quality}
-        className="h-full w-full"
-        dpr={quality === "high" ? [1, 2] : [1, 1.25]}
-        gl={{ alpha: true, antialias: quality === "high" }}
-        camera={{ fov: 32, position: [180, 130, 190], near: 0.1, far: 5000 }}
-      >
-        <ambientLight intensity={0.72} />
-        <directionalLight position={[80, 140, 60]} intensity={1.15} />
-        <directionalLight position={[-70, 40, -40]} intensity={0.35} />
-        {quality === "high" ? (
-          <Environment resolution={64} frames={1}>
-            <Lightformer form="rect" intensity={1.4} position={[0, 6, 0]} rotation-x={Math.PI / 2} scale={[12, 12, 1]} />
-            <Lightformer form="rect" intensity={0.6} position={[-6, 2, 4]} rotation-y={Math.PI / 3} scale={[8, 4, 1]} />
-            <Lightformer form="rect" intensity={0.4} position={[6, 1, -4]} rotation-y={-Math.PI / 2} scale={[8, 4, 1]} />
-          </Environment>
-        ) : null}
-        <Grid
-          args={[2400, 2400]}
-          cellSize={42}
-          cellThickness={0.55}
-          cellColor={dark ? "#262626" : "#e5e5e5"}
-          sectionSize={168}
-          sectionThickness={1.05}
-          sectionColor={dark ? "#404040" : "#a3a3a3"}
-          fadeDistance={1100}
-          fadeStrength={1.4}
-          infiniteGrid
-          position={[0, -0.25, 0]}
-        />
-        {parts.map((part, index) => (
-          <PartMesh
-            key={part.name}
-            part={part}
-            quality={quality}
-            color={colors[index % colors.length]}
-          />
-        ))}
-        <Fit parts={parts} />
-        <OrbitControls
-          makeDefault
-          enableDamping
-          dampingFactor={0.14}
-          maxPolarAngle={Math.PI / 2.04}
-          minPolarAngle={0.12}
-        />
-      </Canvas>
+      {quad ? (
+        <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-px bg-border">
+          {(["top", "front", "right", "perspective"] as const).map((name) => (
+            <div key={name} className="relative bg-background">
+              {scene(name)}
+              <span className="pointer-events-none absolute top-2 left-3 font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+                {name}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        scene("perspective")
+      )}
       <CropMarks />
-      {toolbar ? <div className="absolute bottom-4 left-4">{toolbar}</div> : null}
+      <div className="absolute bottom-4 left-4 flex items-center gap-2">
+        {toolbar}
+        <button
+          type="button"
+          aria-label="View from bottom"
+          title="View the underside"
+          onClick={() => setBottomTick((tick) => tick + 1)}
+          className="flex h-7 items-center gap-1 rounded-full border border-border bg-background/80 px-2.5 text-xs text-muted-foreground backdrop-blur transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
+          <ArrowDownToLine className="size-3.5" aria-hidden />
+          Bottom
+        </button>
+        <button
+          type="button"
+          aria-pressed={quad}
+          aria-label={quad ? "Single view" : "Quad view"}
+          title={
+            quad ? "Back to a single view" : "Top, front, side and 3D at once"
+          }
+          onClick={() => {
+            setBottomTick(0);
+            setQuad((value) => !value);
+          }}
+          className="hidden h-7 items-center gap-1 rounded-full border border-border bg-background/80 px-2.5 text-xs text-muted-foreground backdrop-blur transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:flex"
+        >
+          {quad ? (
+            <Square className="size-3.5" aria-hidden />
+          ) : (
+            <Grid2x2 className="size-3.5" aria-hidden />
+          )}
+          {quad ? "Single" : "Quad"}
+        </button>
+      </div>
+      {stats ? (
+        <div className="pointer-events-none absolute right-4 bottom-4 max-w-[min(60%,32rem)]">
+          {stats}
+        </div>
+      ) : null}
       {badge ? (
         <div className="pointer-events-none absolute top-3 right-4 font-mono text-[10px] tracking-[0.18em] text-muted-foreground">
           {badge}
