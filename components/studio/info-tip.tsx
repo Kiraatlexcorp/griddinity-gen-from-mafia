@@ -23,14 +23,12 @@ export function InfoTip({ id, label, text }: { id: string; label: string; text: 
           closeDelay={80}
           aria-label={`About ${label}`}
           className="info-tip-trigger"
-          onFocus={() => setOpen(true)}
-          onBlur={() => setOpen(false)}
           onClick={(event) => event.stopPropagation()}
         >
           <Info aria-hidden />
         </Popover.Trigger>
         <Popover.Portal>
-          <Popover.Positioner side="top" align="start" sideOffset={6} className="z-50">
+          <Popover.Positioner side="top" align="start" sideOffset={6} className="z-[60]">
             <Popover.Popup className="info-tip-popup">{text}</Popover.Popup>
           </Popover.Positioner>
         </Popover.Portal>
