@@ -384,30 +384,22 @@ export function Studio() {
       </Sidebar>
 
       <SidebarInset className="min-h-0 overflow-y-auto md:overflow-hidden md:ring-1 md:ring-border">
-        <HalloweenBanner />
+        <div className="hidden md:contents">
+          <HalloweenBanner />
+        </div>
         <header className="sticky top-0 z-10 flex h-(--header-height) shrink-0 items-center gap-2 border-b bg-background/90 px-3 backdrop-blur md:rounded-t-xl lg:px-5">
           <h1 className="sr-only">Gridfinity Studio</h1>
-          <SidebarTrigger className="-ml-1" />
-          <span aria-hidden className="mx-1 h-4 w-px bg-border" />
+          <SidebarTrigger className="-ml-1 hidden md:inline-flex" />
+          <span aria-hidden className="mx-1 hidden h-4 w-px bg-border md:block" />
           <span className="font-heading text-base font-semibold">
             {state.tab === "bin" ? "Bin" : state.tab === "lid" ? "Lid" : "Baseplate"}
           </span>
           <span aria-hidden className="mx-2 hidden h-4 w-px bg-border lg:block" />
           <StatBar stats={stats} inline />
           <div className="ml-auto flex shrink-0 items-center gap-1.5">
-            <Button type="button" variant="ghost" size="sm" onClick={() => void copyLink()}>
+            <Button type="button" variant="ghost" size="sm" className="hidden md:inline-flex" onClick={() => void copyLink()}>
               <Link2 data-icon="inline-start" />
               <span className="hidden sm:inline lg:hidden xl:inline">{copied ? "Copied" : "Copy link"}</span>
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="rounded-full md:hidden"
-              aria-label="Download Bambu A1 print profile"
-              onClick={() => void downloadA1Presets().catch((e: Error) => setExportError(e.message))}
-            >
-              <Download data-icon="inline-start" />A1
             </Button>
             <Button type="button" variant="ghost" size="icon-sm" aria-label="Switch theme" onClick={toggleTheme}>
               <Sun className="hidden dark:block" />
@@ -462,7 +454,7 @@ export function Studio() {
               <AlertDescription>{exportError}</AlertDescription>
             </Alert>
           ) : null}
-          <Card className="relative min-h-[60svh] flex-1 gap-0 p-0 md:min-h-0">
+          <Card className="relative -mx-3 min-h-[62svh] flex-1 gap-0 rounded-none border-0 p-0 shadow-none ring-0 md:mx-0 md:min-h-0 md:rounded-xl md:border md:shadow-sm md:ring-1">
             <Preview
               parts={parts}
               status={status}
@@ -506,47 +498,68 @@ export function Studio() {
         onStl={() => void save("stl")}
         on3mf={() => void save("3mf")}
         onProject={() => void saveProject()}
+        onProfile={() => void downloadA1Presets().catch((e: Error) => setExportError(e.message))}
       />
       <Toast message={toast.message} open={toast.open} />
     </SidebarProvider>
   );
 }
 
-/** Phone-only bottom bar: open settings and export with thumb-size buttons. */
+/** Phone-only bottom bar: Edit opens the settings sheet, Download opens a short list. */
 function MobileBar({
   disabled,
   exporting,
   onStl,
   on3mf,
   onProject,
-  }: {
+  onProfile,
+}: {
   disabled: boolean;
   exporting: string | null;
   onStl: () => void;
   on3mf: () => void;
   onProject: () => void;
+  onProfile: () => void;
 }) {
   const { setOpenMobile } = useSidebar();
-  const icon = (kind: string) => (exporting === kind ? <Spinner data-icon="inline-start" /> : <Download data-icon="inline-start" />);
+  const [menu, setMenu] = useState(false);
+  const pick = (fn: () => void) => () => {
+    setMenu(false);
+    fn();
+  };
+  const items: [string, string, () => void, boolean][] = [
+    ["Project", "Baseplate, bin and lid, 3 plates", onProject, disabled],
+    ["3MF", "This part, for Bambu Studio", on3mf, disabled],
+    ["STL", "This part, any slicer", onStl, disabled],
+    ["A1 print profile", "Presets for Bambu Studio", onProfile, false],
+  ];
   return (
-    <nav
-      aria-label="Actions"
-      data-testid="mobile-bar"
-      className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 gap-1.5 border-t bg-background/95 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden"
-    >
-      <Button type="button" size="lg" className="h-11 rounded-full px-2" onClick={() => setOpenMobile(true)}>
-        <SlidersHorizontal data-icon="inline-start" />
-        Edit
-      </Button>
-      <Button type="button" variant="outline" size="lg" className="h-11 rounded-full px-2" disabled={disabled} onClick={onStl}>
-        {icon("stl")}STL
-      </Button>
-      <Button type="button" variant="outline" size="lg" className="h-11 rounded-full px-2" disabled={disabled} onClick={on3mf}>
-        {icon("3mf")}3MF
-      </Button>
-      <Button type="button" variant="outline" size="lg" className="h-11 rounded-full px-2" disabled={disabled} onClick={onProject}>
-        {icon("project")}Project
-      </Button>
-    </nav>
+    <>
+      {menu ? <button type="button" aria-label="Close" className="fixed inset-0 z-20 md:hidden" onClick={() => setMenu(false)} /> : null}
+      {menu ? (
+        <div role="menu" className="fixed inset-x-3 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 overflow-hidden rounded-2xl border bg-popover shadow-lg md:hidden">
+          {items.map(([label, note, fn, off]) => (
+            <button key={label} type="button" role="menuitem" disabled={off} onClick={pick(fn)} className="flex min-h-14 w-full flex-col items-start justify-center border-b px-4 text-left last:border-b-0 disabled:opacity-50">
+              <span className="text-sm font-medium">{label}</span>
+              <span className="text-xs text-muted-foreground">{note}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <nav
+        aria-label="Actions"
+        data-testid="mobile-bar"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-2 gap-2 border-t bg-background/95 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden"
+      >
+        <Button type="button" variant="outline" size="lg" className="h-12 rounded-full" onClick={() => setOpenMobile(true)}>
+          <SlidersHorizontal data-icon="inline-start" />
+          Edit
+        </Button>
+        <Button type="button" size="lg" className="h-12 rounded-full" aria-expanded={menu} onClick={() => setMenu((v) => !v)}>
+          {exporting ? <Spinner data-icon="inline-start" /> : <Download data-icon="inline-start" />}
+          Download
+        </Button>
+      </nav>
+    </>
   );
 }

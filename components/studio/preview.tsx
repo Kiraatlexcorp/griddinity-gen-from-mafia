@@ -1,5 +1,6 @@
 "use client";
 
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Environment,
   GizmoHelper,
@@ -327,6 +328,7 @@ export function Preview({
   error: string | null;
 }) {
   const dark = useDarkPaper();
+  const phone = useIsMobile();
   const [bottomTick, setBottomTick] = useState(0);
   const [quad, setQuad] = useState(false);
   const [homeTick, setHomeTick] = useState(0);
@@ -347,7 +349,7 @@ export function Preview({
     <Canvas
       key={`${quality}-${view}`}
       className="h-full w-full"
-      dpr={quality === "high" ? [1, 2] : [1, 1.25]}
+      dpr={phone ? [1, 1.5] : quality === "high" ? [1, 2] : [1, 1.25]}
       gl={{ alpha: true, antialias: quality === "high" }}
       camera={{ fov: 32, position: [180, 130, 190], near: 0.1, far: 5000 }}
     >
@@ -415,7 +417,7 @@ export function Preview({
         minPolarAngle={0.02}
       />
       {view === "perspective" ? <BottomView tick={bottomTick} /> : null}
-      {view === "perspective" && !printing ? (
+      {view === "perspective" && !printing && !phone ? (
         <ViewGizmo onHome={() => setHomeTick((tick) => tick + 1)} />
       ) : null}
     </Canvas>
@@ -447,7 +449,7 @@ export function Preview({
           {hoverLabel}
         </div>
       ) : null}
-      <div className={printing ? "hidden" : "absolute bottom-3 left-3 flex items-center gap-2 md:bottom-4 md:left-4"}>
+      <div className={printing ? "hidden" : "absolute bottom-4 left-4 hidden items-center gap-2 md:flex"}>
         {toolbar}
         <button
           type="button"
@@ -481,7 +483,7 @@ export function Preview({
         </button>
       </div>
       {(stats || suggestions?.length) && !printing ? (
-        <div className="pointer-events-none absolute right-3 bottom-13 left-3 flex flex-col items-end gap-2 md:right-4 md:bottom-4 md:left-auto md:max-w-[min(60%,32rem)]">
+        <div className="pointer-events-none absolute right-4 bottom-4 hidden max-w-[min(60%,32rem)] flex-col items-end gap-2 md:flex">
           {suggestions?.length ? (
             <div data-testid="view-suggestions" className="pointer-events-auto flex flex-col items-end gap-1.5">
               {suggestions.map((s) => (
@@ -495,7 +497,7 @@ export function Preview({
         </div>
       ) : null}
       {badge && !printing ? (
-        <div className="pointer-events-none absolute top-3 right-4 font-mono text-[10px] tracking-[0.18em] text-muted-foreground">
+        <div className="pointer-events-none absolute top-3 right-4 hidden font-mono md:block text-[10px] tracking-[0.18em] text-muted-foreground">
           {badge}
         </div>
       ) : null}
