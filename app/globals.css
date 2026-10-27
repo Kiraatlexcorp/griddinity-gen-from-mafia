@@ -659,9 +659,15 @@
   opacity: 0.75;
   vertical-align: middle;
   cursor: help;
+  position: relative;
   transition:
     color var(--duration-quick) var(--ease-smooth-out),
     opacity var(--duration-quick) var(--ease-smooth-out);
+}
+.info-tip-trigger::after {
+  content: "";
+  position: absolute;
+  inset: -13px;
 }
 .info-tip-trigger svg {
   width: 14px;
